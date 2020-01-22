@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Compiler.FSharp;
+using System;
 
 namespace Compiler
 {
@@ -6,6 +7,7 @@ namespace Compiler
     {
         static void Main(string[] args)
         {
+            Say.hello("Thad");
             Console.WriteLine("Hello World!");
         }
     }
