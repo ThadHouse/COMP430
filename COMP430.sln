@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler", "Compiler\Compil
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler.Test", "Compiler.Test\Compiler.Test.csproj", "{0D82E052-8FD5-435E-922C-B70A95D7A329}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Compiler.FSharp", "Compiler.FSharp\Compiler.FSharp.fsproj", "{60A278E6-FA5C-4D16-8C20-F575E270D1CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +46,17 @@ Global
 		{0D82E052-8FD5-435E-922C-B70A95D7A329}.Release|x64.Build.0 = Release|Any CPU
 		{0D82E052-8FD5-435E-922C-B70A95D7A329}.Release|x86.ActiveCfg = Release|Any CPU
 		{0D82E052-8FD5-435E-922C-B70A95D7A329}.Release|x86.Build.0 = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|x64.Build.0 = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Debug|x86.Build.0 = Debug|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x64.ActiveCfg = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x64.Build.0 = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x86.ActiveCfg = Release|Any CPU
+		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
