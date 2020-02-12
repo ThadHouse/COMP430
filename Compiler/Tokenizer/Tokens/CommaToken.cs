@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class CommaToken : IToken
+    public class CommaToken : ISingleCharToken
     {
+        public const char CharValue = ',';
     }
 }

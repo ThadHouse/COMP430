@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class DotToken : IToken
+    public class DotToken : ISingleCharToken
     {
+        public const char CharValue = '.';
     }
 }

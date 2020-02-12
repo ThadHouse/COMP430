@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class NamespaceToken : IToken
+    public class NamespaceToken : IKeywordToken
     {
+        public const string KeywordValue = "namespace";
     }
 }

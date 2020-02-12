@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class StaticToken : IToken
+    public class StaticToken : IKeywordToken
     {
+        public const string KeywordValue = "static";
     }
 }

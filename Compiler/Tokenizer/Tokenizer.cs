@@ -9,12 +9,21 @@ namespace Compiler.Tokenizer
 {
     public class Tokenizer : ITokenizer
     {
-        private char[] allowedSingleCharacters = new char[]
+        public static readonly char[] AllowedSingleCharacters = new char[]
 {
             '[', ']', '{', '}', ';', '(', ')', '.', ',', '='
 };
 
-        private IToken ParseSingleCharToken(char token)
+        public static readonly string[] Keywords = new string[]
+        {
+            "class",
+            "namespace",
+            "static",
+            "return",
+            "var"
+        };
+
+        public IToken ParseSingleCharToken(char token)
         {
             return token switch
             {
@@ -32,7 +41,7 @@ namespace Compiler.Tokenizer
             };
         }
 
-        private IToken ParseToken(ReadOnlySpan<char> token)
+        public IToken ParseToken(ReadOnlySpan<char> token)
         {
             var tokenString = token.ToString();
             return tokenString switch
@@ -77,7 +86,7 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
-                if (allowedSingleCharacters.Contains(currentChar))
+                if (AllowedSingleCharacters.Contains(currentChar))
                 {
                     if (!currentToken.IsEmpty)
                     {

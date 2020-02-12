@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class RightBracketToken : IToken
+    public class RightBracketToken : ISingleCharToken
     {
+        public const char CharValue = ']';
     }
 }

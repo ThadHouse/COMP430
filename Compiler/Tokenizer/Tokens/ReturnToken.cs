@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class ReturnToken : IToken
+    public class ReturnToken : IKeywordToken
     {
+        public const string KeywordValue = "return";
     }
 }

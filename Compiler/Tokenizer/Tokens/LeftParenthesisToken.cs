@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class LeftParenthesisToken : IToken
+    public class LeftParenthesisToken : ISingleCharToken
     {
+        public const char CharValue = '(';
     }
 }
