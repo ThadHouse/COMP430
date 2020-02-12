@@ -1,4 +1,5 @@
-﻿using Compiler.Tokenizer.Tokens;
+﻿using Compiler.Tokenizer.Exceptions;
+using Compiler.Tokenizer.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +28,7 @@ namespace Compiler.Tokenizer
                 '.' => new DotToken(),
                 ',' => new CommaToken(),
                 '=' => new EqualsToken(),
-                _ => throw new Exception("Invalid single character")
+                _ => throw new InvalidTokenParsingException(token, ReadOnlySpan<char>.Empty) // This should never be hit
             };
         }
 
@@ -89,7 +90,7 @@ namespace Compiler.Tokenizer
                 }
                 else if (char.IsLetterOrDigit(currentChar)) {
                     // If its a digit or a letter, just add it to the current token
-                    currentToken = input.Slice(i, currentToken.Length + 1);
+                    currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
                 }
                 else if (currentChar == '\'')
                 {
@@ -103,7 +104,7 @@ namespace Compiler.Tokenizer
                 }
                 else
                 {
-                    throw new Exception("Unknown character");
+                    throw new InvalidTokenParsingException(currentChar, currentToken);
                 }
             }
 
