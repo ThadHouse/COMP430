@@ -64,10 +64,30 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
+        public void TestCharConstantBadEscape3()
+        {
+            var code = @"
+'\;b";
+
+            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code));
+        }
+
+        [Fact]
         public void TestCharConstantEmpty()
         {
             var code = @"
 ''";
+
+            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code));
+        }
+
+        [Fact]
+        public void TestCharConstantEmptyNotLastInFile()
+        {
+            var code = @"
+'';";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code));
