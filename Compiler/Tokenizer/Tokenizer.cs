@@ -21,7 +21,8 @@ namespace Compiler.Tokenizer
             "namespace",
             "static",
             "return",
-            "var"
+            "var",
+            "entrypoint"
         };
 
         public ISingleCharToken ParseSingleCharToken(char token)
@@ -52,6 +53,7 @@ namespace Compiler.Tokenizer
                 "static" => new StaticToken(),
                 "return" => new ReturnToken(),
                 "var" => new VarToken(),
+                "entrypoint" => new EntryPointToken(),
                 _ => new IdentifierToken(tokenString)
             };
         }
