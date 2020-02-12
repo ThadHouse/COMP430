@@ -34,6 +34,16 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
+        public void TestCharConstantTooShort()
+        {
+            var code = @"
+'";
+
+            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code));
+        }
+
+        [Fact]
         public void TestCharConstantBadEscape()
         {
             var code = @"

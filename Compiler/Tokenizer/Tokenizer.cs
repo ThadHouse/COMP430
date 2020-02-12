@@ -103,6 +103,38 @@ namespace Compiler.Tokenizer
 
         private (string parsed, int toIncrement) ParseStringLiteral(ReadOnlySpan<char> input, int i)
         {
+            //// Check to see if we have enough length even for an empty constant
+            //if (i == input.Length - 1)
+            //{
+            //    throw new StringConstantException("Not enough characters left to parse");
+            //}
+
+            //// Check if we have an empty constant
+            //if (input[i + 1] == '\"')
+            //{
+            //    return ("", 1);
+            //}
+
+            // Parse the rest
+            int curIndex = i + 1;
+            while (true)
+            {
+                if (curIndex == input.Length)
+                {
+                    throw new StringConstantException("Not enough characters left to parse");
+                }
+
+                if (input[curIndex] == '\"')
+                {
+                    int len = curIndex - i - 1;
+                    // Found end
+                    var toRet = input.Slice(i + 1, len).ToString();
+                    return (toRet, len + 1);
+                }
+                curIndex++;
+            }
+
+
             throw new NotImplementedException();
         }
 
