@@ -86,5 +86,12 @@ abc@";
             Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
             Assert.IsType<SemiColonToken>(tokens[1]);
         }
+
+        [Fact]
+        public void TestTokenizerInvalidSingleCharTokenFails()
+        {
+            var tokenizer = new Compiler.Tokenizer.Tokenizer();
+            Assert.Throws<InvalidTokenParsingException>(() => tokenizer.ParseSingleCharToken('c'));
+        }
     }
 }
