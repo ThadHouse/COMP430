@@ -88,19 +88,20 @@ namespace Compiler.Tokenizer
 
                     tokens.Add(ParseSingleCharToken(currentChar));
                 }
-                else if (char.IsLetterOrDigit(currentChar)) {
+                else if (char.IsLetterOrDigit(currentChar))
+                {
                     // If its a digit or a letter, just add it to the current token
                     currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
                 }
                 else if (currentChar == '\'')
                 {
                     // Could be the start or end of a character constant
-                    
+
                 }
                 else if (currentChar == '"')
                 {
                     // Could be the start or end of a string constant
-                    
+
                 }
                 else
                 {
