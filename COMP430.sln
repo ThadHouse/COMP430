@@ -1,13 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26124.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler", "Compiler\Compiler.csproj", "{22697F95-34CE-4A36-A397-4570B96E96FA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler", "Compiler\Compiler.csproj", "{22697F95-34CE-4A36-A397-4570B96E96FA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler.Test", "Compiler.Test\Compiler.Test.csproj", "{0D82E052-8FD5-435E-922C-B70A95D7A329}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler.Test", "Compiler.Test\Compiler.Test.csproj", "{0D82E052-8FD5-435E-922C-B70A95D7A329}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Compiler.FSharp", "Compiler.FSharp\Compiler.FSharp.fsproj", "{60A278E6-FA5C-4D16-8C20-F575E270D1CE}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Compiler.FSharp", "Compiler.FSharp\Compiler.FSharp.fsproj", "{60A278E6-FA5C-4D16-8C20-F575E270D1CE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A82D7752-1590-4916-ACD6-D77A4BB73F49}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,9 +22,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{22697F95-34CE-4A36-A397-4570B96E96FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -58,5 +60,11 @@ Global
 		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x64.Build.0 = Release|Any CPU
 		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x86.ActiveCfg = Release|Any CPU
 		{60A278E6-FA5C-4D16-8C20-F575E270D1CE}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CD93BB41-113F-4408-A6FC-9CF301C8C936}
 	EndGlobalSection
 EndGlobal

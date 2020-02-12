@@ -72,5 +72,19 @@ abc@";
             Assert.IsType<IdentifierToken>(tokens[0]);
             Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
         }
+
+                [Fact]
+        public void TestTokenizerIdentifierEndsWithSemiColon()
+        {
+            var code = @"
+    abc;";
+
+            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            var tokens = tokenizer.EnumerateTokens(code);
+            Assert.Equal(2, tokens.Count);
+            Assert.IsType<IdentifierToken>(tokens[0]);
+            Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
+            Assert.IsType<SemiColonToken>(tokens[1]);
+        }
     }
 }
