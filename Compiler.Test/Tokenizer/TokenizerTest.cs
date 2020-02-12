@@ -73,7 +73,7 @@ abc@";
             Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
         }
 
-                [Fact]
+        [Fact]
         public void TestTokenizerIdentifierEndsWithSemiColon()
         {
             var code = @"
