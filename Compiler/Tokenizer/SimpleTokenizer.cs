@@ -91,6 +91,7 @@ namespace Compiler.Tokenizer
                 "constructor" => new ConstructorToken(),
                 "method" => new MethodToken(),
                 "field" => new FieldToken(),
+                "delegate" => new DelegateToken(),
                 _ => new IdentifierToken(tokenString)
             };
         }
