@@ -17,7 +17,7 @@ namespace Compiler.Test.Tokenizer
 ""abc""";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(1, tokens.Count);
             var charConstToken = Assert.IsType<StringConstantToken>(tokens[0]);
             Assert.Equal("abc", charConstToken.Value);
@@ -30,7 +30,7 @@ namespace Compiler.Test.Tokenizer
 """"";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(1, tokens.Count);
             var charConstToken = Assert.IsType<StringConstantToken>(tokens[0]);
             Assert.Equal("", charConstToken.Value);
@@ -43,7 +43,7 @@ namespace Compiler.Test.Tokenizer
 """;
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            Assert.Throws<StringConstantException>(() => tokenizer.EnumerateTokens(code));
+            Assert.Throws<StringConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
     }
 }

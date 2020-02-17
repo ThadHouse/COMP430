@@ -17,7 +17,7 @@ namespace Compiler.Test.Tokenizer
 @";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code));
+            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
             Assert.Empty(tokenParsingException.CurrentlyParsedToken);
             Assert.Equal('@', tokenParsingException.CauseCharacter);
         }
@@ -29,7 +29,7 @@ namespace Compiler.Test.Tokenizer
 abc@";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code));
+            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
             Assert.Equal("abc", tokenParsingException.CurrentlyParsedToken);
             Assert.Equal('@', tokenParsingException.CauseCharacter);
         }
@@ -41,7 +41,7 @@ abc@";
     ;";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(1, tokens.Count);
             Assert.IsType<SemiColonToken>(tokens[0]);
         }
@@ -53,7 +53,7 @@ abc@";
     ;   abc  ";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(2, tokens.Count);
             Assert.IsType<SemiColonToken>(tokens[0]);
             Assert.IsType<IdentifierToken>(tokens[1]);
@@ -67,7 +67,7 @@ abc@";
     abc";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(1, tokens.Count);
             Assert.IsType<IdentifierToken>(tokens[0]);
             Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
@@ -80,7 +80,7 @@ abc@";
     abc;";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
-            var tokens = tokenizer.EnumerateTokens(code);
+            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(2, tokens.Count);
             Assert.IsType<IdentifierToken>(tokens[0]);
             Assert.Equal("abc", ((IdentifierToken)tokens[0]).Name);
