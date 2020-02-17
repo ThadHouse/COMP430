@@ -11,5 +11,13 @@ namespace Compiler.Tokenizer.Exceptions
         {
 
         }
+
+        public CharacterConstantException()
+        {
+        }
+
+        public CharacterConstantException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }

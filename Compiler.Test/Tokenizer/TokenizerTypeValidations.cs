@@ -25,7 +25,7 @@ namespace Compiler.Test.Tokenizer
         [Fact]
         public void VerifyAllSingleCharTokensHaveACharValueInTheAllowedCharsList()
         {
-            var allowedChars = new List<char>(Compiler.Tokenizer.Tokenizer.AllowedSingleCharacters);
+            var allowedChars = new List<char>(Compiler.Tokenizer.SimpleTokenizer.AllowedSingleCharacters);
 
             var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
@@ -42,7 +42,7 @@ namespace Compiler.Test.Tokenizer
         [Fact]
         public void VerifyAllSingleCharTokensParseCorrectly()
         {
-            var tokenizer = new Compiler.Tokenizer.Tokenizer();
+            var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
             foreach (var tokenClass in singleCharTokenClasses)
@@ -50,7 +50,7 @@ namespace Compiler.Test.Tokenizer
                 var tokenCharValueField = tokenClass.GetField("CharValue", BindingFlags.Public | BindingFlags.Static);
                 char c = (char)tokenCharValueField.GetValue(null);
 
-                Assert.IsType(tokenClass, tokenizer.ParseSingleCharToken(c));
+                Assert.IsType(tokenClass, SimpleTokenizer.ParseSingleCharToken(c));
             }
         }
 
@@ -69,7 +69,7 @@ namespace Compiler.Test.Tokenizer
         [Fact]
         public void VerifyAllKeywordTokensHaveACharValueInTheAllowedCharsList()
         {
-            var allowedChars = new List<string>(Compiler.Tokenizer.Tokenizer.Keywords);
+            var allowedChars = new List<string>(Compiler.Tokenizer.SimpleTokenizer.Keywords);
 
             var tokenClasses = typeof(IKeywordToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(IKeywordToken)));
 
@@ -86,7 +86,7 @@ namespace Compiler.Test.Tokenizer
         [Fact]
         public void VerifyAllKeywordTokensParseCorrectly()
         {
-            var tokenizer = new Compiler.Tokenizer.Tokenizer();
+            var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokenClasses = typeof(IKeywordToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(IKeywordToken)));
 
             foreach (var tokenClass in tokenClasses)
@@ -94,7 +94,7 @@ namespace Compiler.Test.Tokenizer
                 var tokenCharValueField = tokenClass.GetField("KeywordValue", BindingFlags.Public | BindingFlags.Static);
                 string c = (string)tokenCharValueField.GetValue(null);
 
-                Assert.IsType(tokenClass, tokenizer.ParseToken(c.AsSpan()));
+                Assert.IsType(tokenClass, SimpleTokenizer.ParseToken(c.AsSpan()));
             }
         }
     }

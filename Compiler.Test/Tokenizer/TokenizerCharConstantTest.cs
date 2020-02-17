@@ -16,7 +16,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 'a'";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(1, tokens.Count);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
@@ -29,7 +29,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 'a '";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -39,7 +39,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 '";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -49,7 +49,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 '\'";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -59,7 +59,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 '\;'";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -69,7 +69,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 '\;b";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -79,7 +79,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 ''";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -89,7 +89,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 '';";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<CharacterConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
@@ -99,7 +99,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 ='a'";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(2, tokens.Count);
             Assert.IsType<EqualsToken>(tokens[0]);
@@ -113,7 +113,7 @@ namespace Compiler.Test.Tokenizer
             var code = @"
 = 'a'";
 
-            ITokenizer tokenizer = new Compiler.Tokenizer.Tokenizer();
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
             Assert.Equal(2, tokens.Count);
             Assert.IsType<EqualsToken>(tokens[0]);

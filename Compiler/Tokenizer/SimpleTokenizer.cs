@@ -2,13 +2,14 @@
 using Compiler.Tokenizer.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Compiler.Tokenizer
 {
-    public class Tokenizer : ITokenizer
+    public class SimpleTokenizer : ITokenizer
     {
         public static readonly char[] AllowedSingleCharacters = new char[]
 {
@@ -25,7 +26,7 @@ namespace Compiler.Tokenizer
             "entrypoint"
         };
 
-        public ISingleCharToken ParseSingleCharToken(char token)
+        public static ISingleCharToken ParseSingleCharToken(char token)
         {
             return token switch
             {
@@ -43,7 +44,7 @@ namespace Compiler.Tokenizer
             };
         }
 
-        public IToken ParseToken(ReadOnlySpan<char> token)
+        public static IToken ParseToken(ReadOnlySpan<char> token)
         {
             var tokenString = token.ToString();
             return tokenString switch
@@ -189,7 +190,7 @@ namespace Compiler.Tokenizer
                 {
 
                     var (parsed, toIncrement) = ParseCharLiteral(input, i);
-                    tokenStrings.Add(parsed.ToString());
+                    tokenStrings.Add(parsed.ToString(CultureInfo.InvariantCulture));
                     tokens.Add(new CharacterConstantToken(parsed));
                     i += toIncrement;
 
@@ -203,7 +204,7 @@ namespace Compiler.Tokenizer
                 {
                     // Could be the start or end of a string constant
                     var (parsed, toIncrement) = ParseStringLiteral(input, i);
-                    tokenStrings.Add(parsed.ToString());
+                    tokenStrings.Add(parsed.ToString(CultureInfo.InvariantCulture));
                     tokens.Add(new StringConstantToken(parsed));
                     i += toIncrement;
                 }
