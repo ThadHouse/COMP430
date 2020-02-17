@@ -88,6 +88,9 @@ namespace Compiler.Tokenizer
                 "return" => new ReturnToken(),
                 "var" => new VarToken(),
                 "entrypoint" => new EntryPointToken(),
+                "constructor" => new ConstructorToken(),
+                "method" => new MethodToken(),
+                "field" => new FieldToken(),
                 _ => new IdentifierToken(tokenString)
             };
         }
