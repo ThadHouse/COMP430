@@ -29,6 +29,36 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
+        public void TestTooShortUnicodeEscapeSequenceThrows()
+        {
+            Assert.Throws<OutOfCharactersException>(() => EscapeSequence.EscapeChar('u', "u123", 1, out var adj));
+        }
+
+        [Fact]
+        public void TestInvalidUnicodeEscapeSequenceThrows()
+        {
+            Assert.Throws<UnrecognizedEscapeException>(() => EscapeSequence.EscapeChar('u', "u123-", 1, out var adj));
+        }
+
+        [Fact]
+        public void TestInvalidVariableLengthUnicodeEscapeSequenceThrows()
+        {
+            Assert.Throws<UnrecognizedEscapeException>(() => EscapeSequence.EscapeChar('x', "x-", 1, out var adj));
+        }
+
+        [Fact]
+        public void TestTooShortVariableLengthUnicodeEscapeSequenceThrows()
+        {
+            Assert.Throws<OutOfCharactersException>(() => EscapeSequence.EscapeChar('x', "x", 1, out var adj));
+        }
+
+        [Fact]
+        public void TestSurragePairEscapeSequenceThrows()
+        {
+            Assert.Throws<UnsupportedSurrogatePairEscapeException>(() => EscapeSequence.EscapeChar('U', "U12345678", 1, out var _));
+        }
+
+        [Fact]
         public void TestAllInvalidEscapesFail()
         {
             char[] valid = new char[]

@@ -18,6 +18,13 @@ namespace Compiler.Tokenizer
                     {
                         throw new OutOfCharactersException("Not enough character to parse unicode escape sequence");
                     }
+                    for (int j = i; j < i + 4; j++)
+                    {
+                        if (!char.IsLetterOrDigit(input[j]))
+                        {
+                            throw new UnrecognizedEscapeException("Espace sequence not long enough");
+                        }
+                    }
                     return (char)short.Parse(input.Slice(i, 4).ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 case 'x':
                     adjustment = 0;
@@ -48,11 +55,11 @@ namespace Compiler.Tokenizer
                     }
                     if (adjustment == 0)
                     {
-                        throw new CharacterConstantException("No extra characters for \\x escape");
+                        throw new UnrecognizedEscapeException("No extra characters for \\x escape");
                     }
                     return (char)short.Parse(input.Slice(origI, adjustment).ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 case 'U':
-                    throw new CharacterConstantException("\\U escapes are not supported");
+                    throw new UnsupportedSurrogatePairEscapeException("\\U escapes are not supported");
                 default:
                     throw new UnrecognizedEscapeException($"Unrecognized escape \\{c}");
             }
