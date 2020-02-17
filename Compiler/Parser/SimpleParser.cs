@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Compiler.Parser.Exceptions;
 using Compiler.Parser.Nodes;
@@ -10,38 +11,94 @@ namespace Compiler.Parser
 {
     public class SimpleParser : IParser
     {
-        private static ExpressionSyntaxNode ParseExpression(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        private static ExpressionSyntaxNode? ParseExpression(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent, ExpressionSyntaxNode? wouldBeLeft)
         {
 
             while (!tokens.IsEmpty)
             {
                 var curToken = tokens[0];
+                var prevTokens = tokens;
                 tokens = tokens.Slice(1);
+
+                // Special case the supported of token
+
+                if (curToken is ISupportedOperationToken op)
+                {
+                    if (wouldBeLeft == null)
+                    {
+                        throw new InvalidTokenException("Left can't be null here");
+                    }
+
+                    var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                    if (couldBeRight == null)
+                    {
+                        throw new InvalidTokenException("Right can't be null either");
+                    }
+
+                    return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, op.Operation), couldBeRight);
+                }
+
+                if (wouldBeLeft != null)
+                {
+                    tokens = prevTokens;
+                    return null;
+                }
+
+                ExpressionSyntaxNode? variableNode;
 
                 switch (curToken)
                 {
-                    // This is a terminal
-                    case ThisToken _:
+                    case NumericConstantToken numericConstant:
+                        variableNode = new IntConstantSyntaxNode(parent, int.Parse(numericConstant.Value, CultureInfo.InvariantCulture));
                         break;
-
-
-
-                    // Identifier is a terminal
+                    case StringConstantToken stringConstant:
+                        variableNode = new StringConstantNode(parent, stringConstant.Value);
+                        break;
+                    case IdentifierToken { Name: "this" } _:
+                        variableNode = new ThisConstantNode(parent);
+                        break;
+                    case IdentifierToken { Name: "true" } _:
+                        variableNode = new TrueConstantNode(parent);
+                        break;
+                    case IdentifierToken { Name: "false" } _:
+                        variableNode = new FalseConstantNode(parent);
+                        break;
+                    case IdentifierToken { Name: "null" } _:
+                        variableNode = new NullConstantNode(parent);
+                        break;
                     case IdentifierToken id:
-                        if (tokens.IsEmpty)
-                        {
-                            throw new InvalidTokenException("Must be able to end with a semicolon");
-                        }
-                        if (tokens[0] is SemiColonToken)
-                        {
-                            //return 
-                        }
-                        else
-                        {
-                            throw new InvalidTokenException("Must end with semicolor");
-                        }
+                        variableNode = new VariableSyntaxNode(parent, id.Name);
                         break;
+                    default:
+                        return null;
+
+                        //// Identifier is a terminal
+                        //case IdentifierToken id:
+                        //    if (tokens.IsEmpty)
+                        //    {
+                        //        throw new InvalidTokenException("Must be able to end with a semicolon");
+                        //    }
+                        //    if (tokens[0] is SemiColonToken)
+                        //    {
+                        //        //return 
+                        //    }
+                        //    else
+                        //    {
+                        //        throw new InvalidTokenException("Must end with semicolor");
+                        //    }
+                        //    break;
                 }
+
+                // If its empty, we're done
+                if (tokens.IsEmpty)
+                {
+                    return variableNode;
+                }
+
+                var attemptToParseLower = ParseExpression(ref tokens, parent, variableNode);
+
+                return attemptToParseLower ?? variableNode;
             }
 
             throw new InvalidTokenException("Weird Tokens");
@@ -77,7 +134,27 @@ namespace Compiler.Parser
                     case SemiColonToken _:
                         return new FieldSyntaxNode(parent, typeToken.Name, nameToken.Name, null, ref tokens);
                     case EqualsToken _:
-                        return new FieldSyntaxNode(parent, typeToken.Name, nameToken.Name, ParseExpression, ref tokens);
+                        return new FieldSyntaxNode(parent, typeToken.Name, nameToken.Name, (ref ReadOnlySpan<IToken> tkns, ISyntaxNode pnt) =>
+                        {
+                            var toRet = ParseExpression(ref tkns, pnt, null);
+                            if (tkns.IsEmpty)
+                            {
+                                throw new InvalidTokenException("Out of tokens, must end with a ;");
+                            }
+                            if (tkns[0] is SemiColonToken)
+                            {
+                                tkns = tkns.Slice(1);
+                                if (toRet == null)
+                                {
+                                    throw new InvalidTokenException("Must have an expression here");
+                                }
+                                return toRet;
+                            }
+                            else
+                            {
+                                throw new InvalidTokenException("Expected a ;");
+                            }
+                        }, ref tokens);
                     default:
                         throw new InvalidTokenException("Invalid token");
                 }

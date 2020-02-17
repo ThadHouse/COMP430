@@ -17,7 +17,7 @@ namespace CompilerEXE
             var typeChecker = new SimpleTypeChecker();
             var codeGenerator = new CodeGenerator();
 
-            var code = "delegate void myFunc(int a, ref string b); class A::B::MyClass { field int x; } class OtherClass {}";
+            var code = "delegate void myFunc(int a, ref string b); class A::B::MyClass { field int x = 5 + 3 + 6; field string val = \"hello\"; } class OtherClass {}";
 
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
 

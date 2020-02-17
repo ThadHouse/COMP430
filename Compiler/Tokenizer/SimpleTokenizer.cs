@@ -28,7 +28,7 @@ namespace Compiler.Tokenizer
         public static readonly string[] Keywords = new string[]
         {
             "class",
-            "namespace",
+            "namespace", // not used
             "static",
             "return",
             "auto",
@@ -38,7 +38,6 @@ namespace Compiler.Tokenizer
             "field",
             "method",
             "ref",
-            "this"
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -108,7 +107,6 @@ namespace Compiler.Tokenizer
                 "field" => new FieldToken(),
                 "delegate" => new DelegateToken(),
                 "ref" => new RefToken(),
-                "this" => new ThisToken(),
 
                 // Handle aliases
                 "int" => new IdentifierToken("System.Int32"),

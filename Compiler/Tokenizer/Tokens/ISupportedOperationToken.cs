@@ -4,8 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class ThisToken : IKeywordToken
+    public interface ISupportedOperationToken : ISingleCharToken
     {
-        public const string KeywordValue = "this";
+        char Operation { get; }
     }
 }

@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class MinusToken : ISingleCharToken
+    public class MinusToken : ISupportedOperationToken
     {
         public const char CharValue = '-';
+
+        public char Operation => CharValue;
     }
 }

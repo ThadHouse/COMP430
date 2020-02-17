@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class StarToken : ISingleCharToken
+    public class StarToken : ISupportedOperationToken
     {
         public const char CharValue = '*';
+
+        public char Operation => CharValue;
     }
 }
