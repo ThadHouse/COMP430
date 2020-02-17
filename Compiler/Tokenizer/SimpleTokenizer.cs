@@ -13,7 +13,7 @@ namespace Compiler.Tokenizer
     {
         public static readonly char[] AllowedSingleCharacters = new char[]
 {
-            '[', ']', '{', '}', ';', '(', ')', '.', ',', '='
+            '[', ']', '{', '}', ';', '(', ')', '.', ',', '=', '-', '+', '*', '&', '^', '%', '/', '!',
 };
 
         public static readonly string[] Keywords = new string[]
@@ -40,6 +40,16 @@ namespace Compiler.Tokenizer
                 '.' => new DotToken(),
                 ',' => new CommaToken(),
                 '=' => new EqualsToken(),
+                '-' => new MinusToken(),
+                '+' => new PlusToken(),
+                '&' => new AmpersandToken(),
+                '^' => new HatToken(),
+                '%' => new PercentSignToken(),
+                '!' => new ExclamationPointToken(),
+                '/' => new ForwardSlashToken(),
+                '<' => new LeftArrowToken(),
+                '>' => new RightArrowToken(),
+                '*' => new StarToken(),
                 _ => throw new InvalidTokenParsingException(token, ReadOnlySpan<char>.Empty) // This should never be hit
             };
         }
