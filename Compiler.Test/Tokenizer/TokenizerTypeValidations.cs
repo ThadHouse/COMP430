@@ -40,6 +40,29 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
+        public void VerifyAllCharTokensAreInTheAllowedCharsList()
+        {
+            IEnumerable<char> allowedChars = new List<char>(Compiler.Tokenizer.SimpleTokenizer.AllowedSingleCharacters);
+            var keywordTokens = new List<char>();
+
+            var tokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
+
+            foreach (var tokenClass in tokenClasses)
+            {
+                var tokenCharValueField = tokenClass.GetField("CharValue", BindingFlags.Public | BindingFlags.Static);
+                char c = (char)tokenCharValueField.GetValue(null);
+                keywordTokens.Add(c);
+            }
+
+            foreach (var item in allowedChars)
+            {
+                keywordTokens.Remove(item);
+            }
+
+            Assert.Empty(keywordTokens);
+        }
+
+        [Fact]
         public void VerifyAllSingleCharTokensParseCorrectly()
         {
             var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
@@ -81,6 +104,29 @@ namespace Compiler.Test.Tokenizer
             }
 
             Assert.Empty(allowedChars);
+        }
+
+        [Fact]
+        public void VerifyAllKeywordTokensAreInTheAllowedKeywordsList()
+        {
+            IEnumerable<string> allowedChars = new List<string>(Compiler.Tokenizer.SimpleTokenizer.Keywords);
+            var keywordTokens = new List<string>();
+
+            var tokenClasses = typeof(IKeywordToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(IKeywordToken)));
+
+            foreach (var tokenClass in tokenClasses)
+            {
+                var tokenCharValueField = tokenClass.GetField("KeywordValue", BindingFlags.Public | BindingFlags.Static);
+                string c = (string)tokenCharValueField.GetValue(null);
+                keywordTokens.Add(c);
+            }
+
+            foreach (var item in allowedChars)
+            {
+                keywordTokens.Remove(item);
+            }
+
+            Assert.Empty(keywordTokens);
         }
 
         [Fact]

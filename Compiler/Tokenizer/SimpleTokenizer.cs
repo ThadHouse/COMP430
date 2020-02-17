@@ -13,7 +13,7 @@ namespace Compiler.Tokenizer
     {
         public static readonly char[] AllowedSingleCharacters = new char[]
 {
-            '[', ']', '{', '}', ';', '(', ')', '.', ',', '=', '-', '+', '*', '&', '^', '%', '/', '!',
+            '[', ']', '{', '}', ';', '(', ')', '.', ',', '=', '-', '+', '*', '&', '^', '%', '/', '!', '<', '>'
 };
 
         public static readonly string[] Keywords = new string[]
@@ -22,8 +22,14 @@ namespace Compiler.Tokenizer
             "namespace",
             "static",
             "return",
-            "var",
+            "auto",
             "entrypoint",
+            "constructor",
+            "delegate",
+            "field",
+            "method",
+            "ref",
+            "this"
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -86,7 +92,7 @@ namespace Compiler.Tokenizer
                 "namespace" => new NamespaceToken(),
                 "static" => new StaticToken(),
                 "return" => new ReturnToken(),
-                "var" => new VarToken(),
+                "auto" => new AutoToken(),
                 "entrypoint" => new EntryPointToken(),
                 "constructor" => new ConstructorToken(),
                 "method" => new MethodToken(),

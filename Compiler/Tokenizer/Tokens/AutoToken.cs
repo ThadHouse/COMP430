@@ -4,8 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class VarToken : IKeywordToken
+    public class AutoToken : IKeywordToken
     {
-        public const string KeywordValue = "var";
+        public const string KeywordValue = "auto";
     }
 }
