@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Reflection;
 using System.Reflection.Emit;
+using Compiler.CodeGeneration;
 using Compiler.Parser;
 using Compiler.Tokenizer;
+using Compiler.TypeChecker;
 
 namespace CompilerEXE
 {
@@ -12,12 +14,24 @@ namespace CompilerEXE
         {
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
+            var typeChecker = new SimpleTypeChecker();
+            var codeGenerator = new CodeGenerator();
 
-            var code = "delegate void myFunc(int a, ref string b); class MyClass { field int x = 5; }";
+            var code = "delegate void myFunc(int a, ref string b); class A::B::MyClass { field int x; } class OtherClass {}";
 
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
 
             var ast = parser.ParseTokens(tokens);
+
+            var types = typeChecker.TypeCheck(ast);
+
+            string assemblyName = "HelloWorld";
+            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), (AssemblyBuilderAccess)3); // 3 is run and save, not exposed in NETStandard
+            var createdModule = createdAssembly.DefineDynamicModule(assemblyName, assemblyName + ".dll");
+
+            codeGenerator.GenerateAssembly(types, createdModule);
+
+            createdAssembly.Save("HelloWorld.dll");
 
             var createdAsm = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("MyApplication"), (AssemblyBuilderAccess)3); // 3 is run and save, not exposed in NETStandard
             var module = createdAsm.DefineDynamicModule("MyModule");

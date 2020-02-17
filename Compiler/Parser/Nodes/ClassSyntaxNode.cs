@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Compiler.Parser.Nodes
 {
-    public class ClassSyntaxNode : ISyntaxNode
+    public class ClassSyntaxNode : TypeDefinitionNode
     {
         public IList<FieldSyntaxNode> Fields { get; } = new List<FieldSyntaxNode>();
 
@@ -12,13 +12,10 @@ namespace Compiler.Parser.Nodes
 
         public IList<ConstructorSyntaxNode> Constructors { get; } = new List<ConstructorSyntaxNode>();
 
-        public ISyntaxNode Parent { get; }
-
         public string Name { get; }
 
-        public ClassSyntaxNode(ISyntaxNode parent, string name)
+        public ClassSyntaxNode(ISyntaxNode parent, string name) : base(parent)
         {
-            Parent = parent;
             Name = name;
         }
     }

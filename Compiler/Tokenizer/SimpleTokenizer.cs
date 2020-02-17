@@ -16,6 +16,15 @@ namespace Compiler.Tokenizer
             '[', ']', '{', '}', ';', '(', ')', '.', ',', '=', '-', '+', '*', '&', '^', '%', '/', '!', '<', '>'
 };
 
+        public static readonly string[] Aliases = new string[]
+        {
+            "int",
+            "string",
+            "bool",
+            "object",
+            "void",
+        };
+
         public static readonly string[] Keywords = new string[]
         {
             "class",
@@ -100,7 +109,15 @@ namespace Compiler.Tokenizer
                 "delegate" => new DelegateToken(),
                 "ref" => new RefToken(),
                 "this" => new ThisToken(),
-                _ => new IdentifierToken(tokenString)
+
+                // Handle aliases
+                "int" => new IdentifierToken("System.Int32"),
+                "string" => new IdentifierToken("System.String"),
+                "bool" => new IdentifierToken("System.Boolean"),
+                "object" => new IdentifierToken("System.Object"),
+                "void" => new IdentifierToken("System.Void"),
+
+                _ => new IdentifierToken(tokenString.Replace("::", ".")),
             };
         }
 
@@ -243,7 +260,7 @@ namespace Compiler.Tokenizer
 
                     tokens.Add(ParseSingleCharToken(currentChar));
                 }
-                else if (char.IsLetterOrDigit(currentChar) || currentChar == '_')
+                else if (char.IsLetterOrDigit(currentChar) || currentChar == '_' || currentChar == ':')
                 {
                     if (currentToken.IsEmpty)
                     {

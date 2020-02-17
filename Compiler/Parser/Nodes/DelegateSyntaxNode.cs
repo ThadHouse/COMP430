@@ -4,9 +4,8 @@ using System.Text;
 
 namespace Compiler.Parser.Nodes
 {
-    public class DelegateSyntaxNode : ISyntaxNode
+    public class DelegateSyntaxNode : TypeDefinitionNode
     {
-        public ISyntaxNode? Parent { get; }
 
         public IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
 
@@ -14,10 +13,10 @@ namespace Compiler.Parser.Nodes
         public string ReturnType { get; }
 
         public DelegateSyntaxNode(ISyntaxNode parent, IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, string returnType, string name)
+            : base(parent)
         {
             Name = name;
             ReturnType = returnType;
-            Parent = parent;
             Parameters = parameters;
         }
     }
