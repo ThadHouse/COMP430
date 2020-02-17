@@ -4,11 +4,11 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class DoubleConstantToken : IToken
+    public class NumericConstantToken : IConstantToken
     {
-        public double Value { get; }
+        public string Value { get; }
 
-        public DoubleConstantToken(double value)
+        public NumericConstantToken(string value)
         {
             Value = value;
         }

@@ -44,9 +44,32 @@ namespace Compiler.Tokenizer
             };
         }
 
-        public static IToken ParseToken(ReadOnlySpan<char> token)
+        public static IToken ParseToken(ReadOnlySpan<char> token, bool isReadingNumber)
         {
             var tokenString = token.ToString();
+
+            if (isReadingNumber)
+            {
+                var slice = token;
+                if (token.StartsWith("0x".AsSpan(), StringComparison.InvariantCultureIgnoreCase))
+                {
+                    slice = token.Slice(2);
+                    if (slice.IsEmpty)
+                    {
+                        throw new InvalidNumericTokenException("Token cannot just be 0x");
+                    }
+                }
+                foreach (var d in slice)
+                {
+                    if (!char.IsDigit(d) && d != '.')
+                    {
+                        throw new InvalidNumericTokenException("Token must contain only numbers");
+                    }
+                }
+                return new NumericConstantToken(tokenString);
+            }
+
+
             return tokenString switch
             {
                 "class" => new ClassToken(),
@@ -99,18 +122,6 @@ namespace Compiler.Tokenizer
 
         private (string parsed, int toIncrement) ParseStringLiteral(ReadOnlySpan<char> input, int i)
         {
-            //// Check to see if we have enough length even for an empty constant
-            //if (i == input.Length - 1)
-            //{
-            //    throw new StringConstantException("Not enough characters left to parse");
-            //}
-
-            //// Check if we have an empty constant
-            //if (input[i + 1] == '\"')
-            //{
-            //    return ("", 1);
-            //}
-
             string toRet = string.Empty;
 
             // Parse the rest
@@ -159,6 +170,9 @@ namespace Compiler.Tokenizer
 
             ReadOnlySpan<char> currentToken = ReadOnlySpan<char>.Empty;
 
+            bool isReadingNumber = false;
+            bool hasReadADot = false;
+
             for (int i = 0; i < input.Length; i++)
             {
                 var currentChar = input[i];
@@ -173,25 +187,47 @@ namespace Compiler.Tokenizer
                     }
 
                     tokenStrings.Add(currentToken.ToString());
-                    tokens.Add(ParseToken(currentToken));
+                    tokens.Add(ParseToken(currentToken, isReadingNumber));
 
                     currentToken = ReadOnlySpan<char>.Empty;
+                    hasReadADot = false;
                     continue;
                 }
 
                 if (AllowedSingleCharacters.Contains(currentChar))
                 {
+                    // If a ., 
+                    if (currentChar == '.' && !currentToken.IsEmpty && isReadingNumber)
+                    {
+                        if (hasReadADot)
+                        {
+                            throw new InvalidTokenParsingException(currentChar, currentToken);
+                        }
+                        else
+                        {
+                            hasReadADot = true;
+                            currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
+                            continue;
+                        }
+                    }
+
                     if (!currentToken.IsEmpty)
                     {
                         tokenStrings.Add(currentToken.ToString());
-                        tokens.Add(ParseToken(currentToken));
+                        tokens.Add(ParseToken(currentToken, isReadingNumber));
                         currentToken = ReadOnlySpan<char>.Empty;
+                        hasReadADot = false;
                     }
 
                     tokens.Add(ParseSingleCharToken(currentChar));
                 }
-                else if (char.IsLetterOrDigit(currentChar))
+                else if (char.IsLetterOrDigit(currentChar) || currentChar == '_')
                 {
+                    if (currentToken.IsEmpty)
+                    {
+                        isReadingNumber = char.IsDigit(currentChar);
+                    }
+
                     // If its a digit or a letter, just add it to the current token
                     currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
                 }
@@ -226,7 +262,7 @@ namespace Compiler.Tokenizer
             if (!currentToken.IsEmpty)
             {
                 tokenStrings.Add(currentToken.ToString());
-                tokens.Add(ParseToken(currentToken));
+                tokens.Add(ParseToken(currentToken, isReadingNumber));
             }
 
             return tokens;

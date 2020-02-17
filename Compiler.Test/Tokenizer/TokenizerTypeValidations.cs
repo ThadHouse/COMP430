@@ -94,7 +94,7 @@ namespace Compiler.Test.Tokenizer
                 var tokenCharValueField = tokenClass.GetField("KeywordValue", BindingFlags.Public | BindingFlags.Static);
                 string c = (string)tokenCharValueField.GetValue(null);
 
-                Assert.IsType(tokenClass, SimpleTokenizer.ParseToken(c.AsSpan()));
+                Assert.IsType(tokenClass, SimpleTokenizer.ParseToken(c.AsSpan(), false));
             }
         }
     }
