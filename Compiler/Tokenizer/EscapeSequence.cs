@@ -22,11 +22,19 @@ namespace Compiler.Tokenizer
                 case 'x':
                     adjustment = 0;
                     int maxLength = i + 4;
+                    int origI = i;
                     for (; i < maxLength; i++)
                     {
                         if (i >= input.Length)
                         {
-                            throw new OutOfCharactersException("Not enough characters to parse variable length unicode escape sequence");
+                            if (adjustment == 0)
+                            {
+                                throw new OutOfCharactersException("Not enough characters to parse variable length unicode escape sequence");
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
                         if (char.IsLetterOrDigit(input[i]))
                         {
@@ -42,7 +50,7 @@ namespace Compiler.Tokenizer
                     {
                         throw new CharacterConstantException("No extra characters for \\x escape");
                     }
-                    return (char)short.Parse(input.Slice(i, adjustment).ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                    return (char)short.Parse(input.Slice(origI, adjustment).ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 case 'U':
                     throw new CharacterConstantException("\\U escapes are not supported");
                 default:
