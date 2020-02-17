@@ -18,7 +18,7 @@ namespace Compiler.Test.Tokenizer
 
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-            Assert.Equal(1, tokens.Count);
+            Assert.Equal(1, tokens.Length);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
             Assert.Equal('a', charConstToken.Value);
         }
@@ -101,7 +101,7 @@ namespace Compiler.Test.Tokenizer
 
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-            Assert.Equal(2, tokens.Count);
+            Assert.Equal(2, tokens.Length);
             Assert.IsType<EqualsToken>(tokens[0]);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[1]);
             Assert.Equal('a', charConstToken.Value);
@@ -115,7 +115,7 @@ namespace Compiler.Test.Tokenizer
 
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-            Assert.Equal(2, tokens.Count);
+            Assert.Equal(2, tokens.Length);
             Assert.IsType<EqualsToken>(tokens[0]);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[1]);
             Assert.Equal('a', charConstToken.Value);
@@ -140,7 +140,7 @@ namespace Compiler.Test.Tokenizer
 ";
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-            Assert.Equal(1, tokens.Count);
+            Assert.Equal(1, tokens.Length);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
             Assert.Equal(output, charConstToken.Value);
         }
@@ -165,7 +165,7 @@ x = 5;
 ";
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-            Assert.Equal(6, tokens.Count);
+            Assert.Equal(6, tokens.Length);
             var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
             Assert.Equal(output, charConstToken.Value);
         }
@@ -193,7 +193,7 @@ x = 5;
                 ITokenizer tokenizer = new SimpleTokenizer();
                 i.TryFormat(innerStorage, out var charsWritten, format);
                 var tokens = tokenizer.EnumerateTokens(code);
-                Assert.Equal(1, tokens.Count);
+                Assert.Equal(1, tokens.Length);
                 var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
                 Assert.Equal((char)i, charConstToken.Value);
             }
@@ -225,7 +225,7 @@ x = 5;
                 Span<char> codeStorage = code.Slice(0, charsWritten + 4);
                 codeStorage[codeStorage.Length - 1] = '\'';
                 var tokens = tokenizer.EnumerateTokens(codeStorage);
-                Assert.Equal(1, tokens.Count);
+                Assert.Equal(1, tokens.Length);
                 var charConstToken = Assert.IsType<CharacterConstantToken>(tokens[0]);
                 Assert.Equal((char)i, charConstToken.Value);
             }

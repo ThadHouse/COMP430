@@ -18,7 +18,7 @@ namespace Compiler.Test.Tokenizer
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code);
 
-            Assert.Equal(1, tokens.Count);
+            Assert.Equal(1, tokens.Length);
             var numberToken = Assert.IsType<NumericConstantToken>(tokens[0]);
             Assert.Equal("123", numberToken.Value);
         }
@@ -32,7 +32,7 @@ namespace Compiler.Test.Tokenizer
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code);
 
-            Assert.Equal(1, tokens.Count);
+            Assert.Equal(1, tokens.Length);
             var numberToken = Assert.IsType<NumericConstantToken>(tokens[0]);
             Assert.Equal("12.3", numberToken.Value);
         }
@@ -46,7 +46,7 @@ namespace Compiler.Test.Tokenizer
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(code);
 
-            Assert.Equal(1, tokens.Count);
+            Assert.Equal(1, tokens.Length);
             var numberToken = Assert.IsType<NumericConstantToken>(tokens[0]);
             Assert.Equal("0x123", numberToken.Value);
         }

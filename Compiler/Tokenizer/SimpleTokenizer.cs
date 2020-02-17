@@ -23,7 +23,7 @@ namespace Compiler.Tokenizer
             "static",
             "return",
             "var",
-            "entrypoint"
+            "entrypoint",
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -92,6 +92,8 @@ namespace Compiler.Tokenizer
                 "method" => new MethodToken(),
                 "field" => new FieldToken(),
                 "delegate" => new DelegateToken(),
+                "ref" => new RefToken(),
+                "this" => new ThisToken(),
                 _ => new IdentifierToken(tokenString)
             };
         }
@@ -175,7 +177,7 @@ namespace Compiler.Tokenizer
             }
         }
 
-        public IReadOnlyList<IToken> EnumerateTokens(ReadOnlySpan<char> input)
+        public ReadOnlySpan<IToken> EnumerateTokens(ReadOnlySpan<char> input)
         {
             // This is not going to be a fast tokenizer
 
@@ -279,7 +281,7 @@ namespace Compiler.Tokenizer
                 tokens.Add(ParseToken(currentToken, isReadingNumber));
             }
 
-            return tokens;
+            return tokens.ToArray();
         }
     }
 }

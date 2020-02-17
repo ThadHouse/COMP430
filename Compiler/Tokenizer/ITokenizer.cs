@@ -6,6 +6,6 @@ namespace Compiler.Tokenizer
 {
     public interface ITokenizer
     {
-        IReadOnlyList<IToken> EnumerateTokens(ReadOnlySpan<char> input);
+        ReadOnlySpan<IToken> EnumerateTokens(ReadOnlySpan<char> input);
     }
 }
