@@ -111,6 +111,8 @@ namespace Compiler.Tokenizer
             //    return ("", 1);
             //}
 
+            string toRet = string.Empty;
+
             // Parse the rest
             int curIndex = i + 1;
             while (true)
@@ -120,18 +122,32 @@ namespace Compiler.Tokenizer
                     throw new StringConstantException("Not enough characters left to parse");
                 }
 
-                if (input[curIndex] == '\"')
+                if (input[curIndex] == '\\')
+                {
+                    // Escape
+                    // Must have at least 2 characters
+                    if (curIndex >= input.Length - 2)
+                    {
+                        throw new StringConstantException("Not enough characters left in file");
+                    }
+
+                    char constChar = EscapeSequence.EscapeChar(input[curIndex + 1], input, curIndex + 2, out var adj);
+                    toRet += constChar;
+                    curIndex += adj + 1;
+
+
+                }
+                else if (input[curIndex] == '\"')
                 {
                     int len = curIndex - i - 1;
-                    // Found end
-                    var toRet = input.Slice(i + 1, len).ToString();
                     return (toRet, len + 1);
+                }
+                else
+                {
+                    toRet += input[curIndex];
                 }
                 curIndex++;
             }
-
-
-            throw new NotImplementedException();
         }
 
         public IReadOnlyList<IToken> EnumerateTokens(ReadOnlySpan<char> input)
