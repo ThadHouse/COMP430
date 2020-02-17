@@ -74,23 +74,16 @@ namespace Compiler.Tokenizer
 
             if (input[i + 1] == '\\')
             {
-                // Escape character, need to be able to look 3 ahead
-                if (i >= input.Length - 3)
+                char constChar = EscapeSequence.EscapeChar(input[i + 2], input, i + 3, out var adj);
+                if (input.Length <= i + 3 + adj)
                 {
                     throw new CharacterConstantException("Not enough characters left in file");
                 }
-                if (input[i + 3] != '\'')
+                if (input[i + 3 + adj] != '\'')
                 {
                     throw new CharacterConstantException("Odd ending character");
                 }
-                throw new CharacterConstantException("Escape sequences are not supported yet");
-                //var unescaped = Regex.Unescape(input.Slice(i + 1, 2).ToString());
-                //if (unescaped.Length != 1)
-                //{
-                //    throw new CharacterConstantException("Weird unescape?");
-                //}
-                //char constChar = unescaped[0];
-                //return (constChar, 3);
+                return (constChar, adj + 3);
             }
             else if (input[i + 2] == '\'')
             {
