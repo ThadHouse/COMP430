@@ -11,6 +11,101 @@ namespace Compiler.Parser
 {
     public class SimpleParser : IParser
     {
+        private static IReadOnlyList<CallParameterSyntaxNode> ParseCallParameters(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        {
+            List<CallParameterSyntaxNode> parameters = new List<CallParameterSyntaxNode>();
+
+            while (!tokens.IsEmpty)
+            {
+                var curToken = tokens[0];
+                var prevTokens = tokens;
+                tokens = tokens.Slice(1);
+
+                switch (curToken)
+                {
+                    case RightParenthesisToken _:
+                        return parameters;
+
+                    case RefToken _:
+                        if (tokens.Length < 2)
+                        {
+                            throw new InvalidTokenException("Not enough tokens");
+                        }
+                        if (!(tokens[0] is IdentifierToken nameToken))
+                        {
+                            throw new InvalidTokenException("Must be a name token");
+                        }
+
+                        if (tokens[1] is CommaToken)
+                        {
+                            tokens = tokens.Slice(2);
+                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
+                        }
+                        else if (tokens[1] is RightParenthesisToken)
+                        {
+                            tokens = tokens.Slice(2);
+                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
+                            return parameters;
+                        }
+                        else
+                        {
+                            throw new InvalidTokenException("Invalid token found in character defintion");
+                        }
+                        break;
+                    default:
+                        if (tokens.Length < 1)
+                        {
+                            throw new InvalidTokenException("Not enough tokens");
+                        }
+
+                        tokens = prevTokens;
+
+                        var exp = ParseExpression(ref tokens, parent, null);
+
+                        if (exp == null)
+                        {
+                            throw new InvalidTokenException("Must be an expression here");
+                        }
+
+                        if (tokens.IsEmpty)
+                        {
+                            throw new InvalidTokenException("There must be another token to handle");
+                        }
+
+                        if (tokens[0] is CommaToken)
+                        {
+                            tokens = tokens.Slice(1);
+                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
+                        }
+                        else if (tokens[0] is RightParenthesisToken)
+                        {
+                            tokens = tokens.Slice(1);
+                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
+                            return parameters;
+                        }
+
+                        //if (tokens[0] is CommaToken)
+                        //{
+                        //    tokens = tokens.Slice(2);
+                        //    parameters.Add(new CallParameterSyntaxNode(parent, nameTokenRead.Name, false));
+                        //}
+                        //else if (tokens[0] is RightParenthesisToken)
+                        //{
+                        //    tokens = tokens.Slice(2);
+                        //    parameters.Add(new CallParameterSyntaxNode(parent, nameTokenRead.Name, false));
+                        //    return parameters;
+                        //}
+                        //else
+                        //{
+                        //    throw new InvalidTokenException("Invalid token found in character defintion");
+                        //}
+                        break;
+                }
+            }
+
+            throw new InvalidTokenException("Out of tokens");
+        }
+
         private static ExpressionSyntaxNode? ParseExpression(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent, ExpressionSyntaxNode? wouldBeLeft)
         {
 
@@ -37,6 +132,36 @@ namespace Compiler.Parser
                     }
 
                     return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, op.Operation), couldBeRight);
+                }
+                else if (curToken is DotToken)
+                {
+                    // Method call
+                    // Next token must be an identifier
+                    if (tokens.Length < 3)
+                    {
+                        throw new InvalidTokenException("Not enough tokens left");
+                    }
+
+                    if (!(tokens[0] is IdentifierToken id))
+                    {
+                        throw new InvalidTokenException("An ID token must be next");
+                    }
+
+                    if (wouldBeLeft == null)
+                    {
+                        throw new InvalidTokenException("Left can't be null");
+                    }
+
+                    if (!(tokens[1] is LeftParenthesisToken))
+                    {
+                        throw new InvalidTokenException("Expected left paranthesis");
+                    }
+
+                    tokens = tokens.Slice(2);
+
+                    var parameters = ParseCallParameters(ref tokens, parent);
+
+                    return new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
                 }
 
                 if (wouldBeLeft != null)
@@ -67,27 +192,31 @@ namespace Compiler.Parser
                     case IdentifierToken { Name: "null" } _:
                         variableNode = new NullConstantNode(parent);
                         break;
+                    case NewToken _:
+                        if (tokens.Length < 3)
+                        {
+                            throw new InvalidTokenException("Need tokens to parse");
+                        }
+                        if (!(tokens[0] is IdentifierToken idToken))
+                        {
+                            throw new InvalidTokenException("Next token must be an identifier");
+                        }
+                        if (!(tokens[1] is LeftParenthesisToken))
+                        {
+                            throw new InvalidTokenException("Expected a left paranthesis");
+                        }
+
+                        tokens = tokens.Slice(2);
+
+                        var parameters = ParseCallParameters(ref tokens, parent);
+
+                        variableNode = new NewConstructorExpression(parent, idToken.Name, parameters);
+                        break;
                     case IdentifierToken id:
                         variableNode = new VariableSyntaxNode(parent, id.Name);
                         break;
                     default:
                         return null;
-
-                        //// Identifier is a terminal
-                        //case IdentifierToken id:
-                        //    if (tokens.IsEmpty)
-                        //    {
-                        //        throw new InvalidTokenException("Must be able to end with a semicolon");
-                        //    }
-                        //    if (tokens[0] is SemiColonToken)
-                        //    {
-                        //        //return 
-                        //    }
-                        //    else
-                        //    {
-                        //        throw new InvalidTokenException("Must end with semicolor");
-                        //    }
-                        //    break;
                 }
 
                 // If its empty, we're done
@@ -259,6 +388,9 @@ namespace Compiler.Parser
 
                 switch (curToken)
                 {
+                    case RightParenthesisToken _:
+                        return parameters;
+
                     case RefToken _:
                         {
                             if (tokens.Length < 3)

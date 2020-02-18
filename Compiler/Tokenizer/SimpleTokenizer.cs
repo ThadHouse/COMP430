@@ -38,6 +38,7 @@ namespace Compiler.Tokenizer
             "field",
             "method",
             "ref",
+            "new"
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -107,6 +108,7 @@ namespace Compiler.Tokenizer
                 "field" => new FieldToken(),
                 "delegate" => new DelegateToken(),
                 "ref" => new RefToken(),
+                "new" => new NewToken(),
 
                 // Handle aliases
                 "int" => new IdentifierToken("System.Int32"),
