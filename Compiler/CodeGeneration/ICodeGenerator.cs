@@ -8,6 +8,6 @@ namespace Compiler.CodeGeneration
 {
     public interface ICodeGenerator
     {
-        void GenerateAssembly(IReadOnlyDictionary<string, TypeDefinitionNode> types, ModuleBuilder moduleBuilder);
+        void GenerateAssembly(IReadOnlyList<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)> types);
     }
 }

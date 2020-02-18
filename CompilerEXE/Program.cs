@@ -23,13 +23,13 @@ namespace CompilerEXE
 
             var ast = parser.ParseTokens(tokens);
 
-            var types = typeChecker.TypeCheck(ast);
-
             string assemblyName = "HelloWorld";
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), (AssemblyBuilderAccess)3); // 3 is run and save, not exposed in NETStandard
             var createdModule = createdAssembly.DefineDynamicModule(assemblyName, assemblyName + ".dll");
 
-            codeGenerator.GenerateAssembly(types, createdModule);
+            var types = typeChecker.GenerateTypes(ast, createdModule);
+
+            codeGenerator.GenerateAssembly(types);
 
             createdAssembly.Save("HelloWorld.dll");
 
