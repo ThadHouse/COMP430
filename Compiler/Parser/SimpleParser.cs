@@ -13,7 +13,7 @@ namespace Compiler.Parser
     {
         private static IReadOnlyList<CallParameterSyntaxNode> ParseCallParameters(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
-            List<CallParameterSyntaxNode> parameters = new List<CallParameterSyntaxNode>();
+            var parameters = new List<CallParameterSyntaxNode>();
 
             while (!tokens.IsEmpty)
             {

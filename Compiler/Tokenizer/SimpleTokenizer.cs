@@ -38,7 +38,8 @@ namespace Compiler.Tokenizer
             "field",
             "method",
             "ref",
-            "new"
+            "new",
+            "newarr"
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -109,13 +110,14 @@ namespace Compiler.Tokenizer
                 "delegate" => new DelegateToken(),
                 "ref" => new RefToken(),
                 "new" => new NewToken(),
+                "newarr" => new NewArrToken(),
 
                 // Handle aliases
-                "int" => new IdentifierToken("System.Int32"),
-                "string" => new IdentifierToken("System.String"),
-                "bool" => new IdentifierToken("System.Boolean"),
-                "object" => new IdentifierToken("System.Object"),
-                "void" => new IdentifierToken("System.Void"),
+                "int" => new AliasedIdentifierToken("System.Int32", tokenString),
+                "string" => new AliasedIdentifierToken("System.String", tokenString),
+                "bool" => new AliasedIdentifierToken("System.Boolean", tokenString),
+                "object" => new AliasedIdentifierToken("System.Object", tokenString),
+                "void" => new AliasedIdentifierToken("System.Void", tokenString),
 
                 _ => new IdentifierToken(tokenString.Replace("::", ".")),
             };
