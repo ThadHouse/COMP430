@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using Compiler.Parser.Exceptions;
 using Compiler.Parser.Nodes;
+using Compiler.Parser.Nodes.Statements;
 using Compiler.Tokenizer;
 using Compiler.Tokenizer.Tokens;
 
@@ -11,101 +12,6 @@ namespace Compiler.Parser
 {
     public class SimpleParser : IParser
     {
-        private static IReadOnlyList<CallParameterSyntaxNode> ParseCallParameters(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
-        {
-            var parameters = new List<CallParameterSyntaxNode>();
-
-            while (!tokens.IsEmpty)
-            {
-                var curToken = tokens[0];
-                var prevTokens = tokens;
-                tokens = tokens.Slice(1);
-
-                switch (curToken)
-                {
-                    case RightParenthesisToken _:
-                        return parameters;
-
-                    case RefToken _:
-                        if (tokens.Length < 2)
-                        {
-                            throw new InvalidTokenException("Not enough tokens");
-                        }
-                        if (!(tokens[0] is IdentifierToken nameToken))
-                        {
-                            throw new InvalidTokenException("Must be a name token");
-                        }
-
-                        if (tokens[1] is CommaToken)
-                        {
-                            tokens = tokens.Slice(2);
-                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
-                        }
-                        else if (tokens[1] is RightParenthesisToken)
-                        {
-                            tokens = tokens.Slice(2);
-                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
-                            return parameters;
-                        }
-                        else
-                        {
-                            throw new InvalidTokenException("Invalid token found in character defintion");
-                        }
-                        break;
-                    default:
-                        if (tokens.Length < 1)
-                        {
-                            throw new InvalidTokenException("Not enough tokens");
-                        }
-
-                        tokens = prevTokens;
-
-                        var exp = ParseExpression(ref tokens, parent, null);
-
-                        if (exp == null)
-                        {
-                            throw new InvalidTokenException("Must be an expression here");
-                        }
-
-                        if (tokens.IsEmpty)
-                        {
-                            throw new InvalidTokenException("There must be another token to handle");
-                        }
-
-                        if (tokens[0] is CommaToken)
-                        {
-                            tokens = tokens.Slice(1);
-                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
-                        }
-                        else if (tokens[0] is RightParenthesisToken)
-                        {
-                            tokens = tokens.Slice(1);
-                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
-                            return parameters;
-                        }
-
-                        //if (tokens[0] is CommaToken)
-                        //{
-                        //    tokens = tokens.Slice(2);
-                        //    parameters.Add(new CallParameterSyntaxNode(parent, nameTokenRead.Name, false));
-                        //}
-                        //else if (tokens[0] is RightParenthesisToken)
-                        //{
-                        //    tokens = tokens.Slice(2);
-                        //    parameters.Add(new CallParameterSyntaxNode(parent, nameTokenRead.Name, false));
-                        //    return parameters;
-                        //}
-                        //else
-                        //{
-                        //    throw new InvalidTokenException("Invalid token found in character defintion");
-                        //}
-                        break;
-                }
-            }
-
-            throw new InvalidTokenException("Out of tokens");
-        }
-
         private static ExpressionSyntaxNode? ParseExpression(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent, ExpressionSyntaxNode? wouldBeLeft)
         {
 
@@ -193,25 +99,54 @@ namespace Compiler.Parser
                         variableNode = new NullConstantNode(parent);
                         break;
                     case NewToken _:
-                        if (tokens.Length < 3)
                         {
-                            throw new InvalidTokenException("Need tokens to parse");
+                            if (tokens.Length < 3)
+                            {
+                                throw new InvalidTokenException("Need tokens to parse");
+                            }
+                            if (!(tokens[0] is IdentifierToken idToken))
+                            {
+                                throw new InvalidTokenException("Next token must be an identifier");
+                            }
+                            if (!(tokens[1] is LeftParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Expected a left paranthesis");
+                            }
+
+                            tokens = tokens.Slice(2);
+
+                            var parameters = ParseCallParameters(ref tokens, parent);
+
+                            variableNode = new NewConstructorExpression(parent, idToken.Name, parameters);
+                            break;
                         }
-                        if (!(tokens[0] is IdentifierToken idToken))
+                    case NewArrToken _:
                         {
-                            throw new InvalidTokenException("Next token must be an identifier");
+                            if (tokens.Length < 3)
+                            {
+                                throw new InvalidTokenException("Need tokens to parse");
+                            }
+                            if (!(tokens[0] is IdentifierToken idToken))
+                            {
+                                throw new InvalidTokenException("Next token must be an identifier");
+                            }
+                            if (!(tokens[1] is LeftParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Expected a left paranthesis");
+                            }
+
+                            tokens = tokens.Slice(2);
+
+                            var expression = ParseExpression(ref tokens, parent, null);
+
+                            if (expression == null)
+                            {
+                                throw new InvalidTokenException("Must have an expression for a newarr");
+                            }
+
+                            variableNode = new NewArrExpression(parent, idToken.Name, expression);
+                            break;
                         }
-                        if (!(tokens[1] is LeftParenthesisToken))
-                        {
-                            throw new InvalidTokenException("Expected a left paranthesis");
-                        }
-
-                        tokens = tokens.Slice(2);
-
-                        var parameters = ParseCallParameters(ref tokens, parent);
-
-                        variableNode = new NewConstructorExpression(parent, idToken.Name, parameters);
-                        break;
                     case IdentifierToken id:
                         variableNode = new VariableSyntaxNode(parent, id.Name);
                         break;
@@ -231,6 +166,275 @@ namespace Compiler.Parser
             }
 
             throw new InvalidTokenException("Weird Tokens");
+        }
+
+        private static VariableDeclarationNode? ParseVariableDeclaration(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        {
+            // Field must have at least 3 more tokens
+            if (tokens.Length < 3)
+            {
+                throw new InvalidTokenException("Not enough tokens");
+            }
+
+            string? typeName = null;
+
+            if (tokens[0] is IdentifierToken typeToken)
+            {
+                typeName = typeToken.Name;
+            }
+            else if (tokens[0] is AutoToken)
+            {
+                typeName = null;
+            }
+            else
+            {
+                return null;
+            }
+
+            if (!(tokens[1] is IdentifierToken nameToken))
+            {
+                throw new InvalidTokenException("Name must be the 2nd token");
+            }
+
+            tokens = tokens.Slice(2);
+
+            while (!tokens.IsEmpty)
+            {
+                var curToken = tokens[0];
+                tokens = tokens.Slice(1);
+
+                switch (curToken)
+                {
+                    case SemiColonToken _:
+                        if (typeName == null)
+                        {
+                            throw new InvalidTokenException("Can only use auto with expressions");
+                        }
+                        return new VariableDeclarationNode(parent, typeName, nameToken.Name, null, ref tokens);
+                    case EqualsToken _:
+                        return new VariableDeclarationNode(parent, typeName, nameToken.Name, (ref ReadOnlySpan<IToken> tkns, ISyntaxNode pnt) =>
+                        {
+                            var toRet = ParseExpression(ref tkns, pnt, null);
+                            if (tkns.IsEmpty)
+                            {
+                                throw new InvalidTokenException("Out of tokens, must end with a ;");
+                            }
+                            if (tkns[0] is SemiColonToken)
+                            {
+                                tkns = tkns.Slice(1);
+                                if (toRet == null)
+                                {
+                                    throw new InvalidTokenException("Must have an expression here");
+                                }
+                                return toRet;
+                            }
+                            else
+                            {
+                                throw new InvalidTokenException("Expected a ;");
+                            }
+                        }, ref tokens);
+                    default:
+                        return null;
+                }
+            }
+
+            throw new InvalidTokenException("Out of tokens?");
+        }
+
+        private static StatementSyntaxNode? ParseStatements(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        {
+            var parsedVarDec = ParseVariableDeclaration(ref tokens, parent);
+
+            if (parsedVarDec != null)
+            {
+                return parsedVarDec;
+            }
+
+            while (!tokens.IsEmpty)
+            {
+                var curToken = tokens[0];
+                var prevTokens = tokens;
+                tokens = tokens.Slice(1);
+
+
+
+                switch (curToken)
+                {
+                    case RightBraceToken _:
+                        tokens = prevTokens;
+                        return null;
+                    case ReturnToken _:
+                        {
+                            if (tokens.Length < 1)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+
+                            if (tokens[0] is SemiColonToken)
+                            {
+                                tokens = tokens.Slice(1);
+                                return new ReturnStatementNode(parent, null, ref tokens);
+                            }
+
+                            return new ReturnStatementNode(parent, (ref ReadOnlySpan<IToken> tkns, ISyntaxNode pnt) =>
+                            {
+                                var toRet = ParseExpression(ref tkns, pnt, null);
+                                if (tkns.IsEmpty)
+                                {
+                                    throw new InvalidTokenException("Out of tokens, must end with a ;");
+                                }
+                                if (tkns[0] is SemiColonToken)
+                                {
+                                    tkns = tkns.Slice(1);
+                                    if (toRet == null)
+                                    {
+                                        throw new InvalidTokenException("Must have an expression here");
+                                    }
+                                    return toRet;
+                                }
+                                else
+                                {
+                                    throw new InvalidTokenException("Expected a ;");
+                                }
+                            }, ref tokens);
+                        }
+
+                    case WhileToken _:
+                        {
+                            if (tokens.Length < 4)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+                            if (!(tokens[0] is LeftParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Must have a left paranthesis");
+                            }
+
+                            tokens = tokens.Slice(1);
+
+                            var exp = ParseExpression(ref tokens, parent, null);
+
+                            if (exp == null)
+                            {
+                                throw new InvalidTokenException("Must have an expression");
+                            }
+
+                            if (tokens.Length < 3)
+                            {
+                                throw new InvalidTokenException("Not enough tokens");
+                            }
+
+                            if (!(tokens[0] is RightParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Must have a right paranthesis");
+                            }
+
+                            if (!(tokens[0] is LeftBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a left bracket");
+                            }
+
+                            var stmt = ParseStatements(ref tokens, parent);
+
+                            if (tokens.Length < 1)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+
+                            if (!(tokens[0] is RightBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a right brace");
+                            }
+
+                            tokens = tokens.Slice(1);
+
+                            var stmts = stmt != null ? new StatementSyntaxNode[] { stmt } : Array.Empty<StatementSyntaxNode>();
+
+                            return new StatementSyntaxNode(parent, stmts);
+                        }
+                }
+            }
+
+            throw new InvalidTokenException("Out of tokens?");
+        }
+
+        private static IReadOnlyList<CallParameterSyntaxNode> ParseCallParameters(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        {
+            var parameters = new List<CallParameterSyntaxNode>();
+
+            while (!tokens.IsEmpty)
+            {
+                var curToken = tokens[0];
+                var prevTokens = tokens;
+                tokens = tokens.Slice(1);
+
+                switch (curToken)
+                {
+                    case RightParenthesisToken _:
+                        return parameters;
+
+                    case RefToken _:
+                        if (tokens.Length < 2)
+                        {
+                            throw new InvalidTokenException("Not enough tokens");
+                        }
+                        if (!(tokens[0] is IdentifierToken nameToken))
+                        {
+                            throw new InvalidTokenException("Must be a name token");
+                        }
+
+                        if (tokens[1] is CommaToken)
+                        {
+                            tokens = tokens.Slice(2);
+                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
+                        }
+                        else if (tokens[1] is RightParenthesisToken)
+                        {
+                            tokens = tokens.Slice(2);
+                            parameters.Add(new CallParameterSyntaxNode(parent, new VariableSyntaxNode(parent, nameToken.Name), true));
+                            return parameters;
+                        }
+                        else
+                        {
+                            throw new InvalidTokenException("Invalid token found in character defintion");
+                        }
+                        break;
+                    default:
+                        if (tokens.Length < 1)
+                        {
+                            throw new InvalidTokenException("Not enough tokens");
+                        }
+
+                        tokens = prevTokens;
+
+                        var exp = ParseExpression(ref tokens, parent, null);
+
+                        if (exp == null)
+                        {
+                            throw new InvalidTokenException("Must be an expression here");
+                        }
+
+                        if (tokens.IsEmpty)
+                        {
+                            throw new InvalidTokenException("There must be another token to handle");
+                        }
+
+                        if (tokens[0] is CommaToken)
+                        {
+                            tokens = tokens.Slice(1);
+                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
+                        }
+                        else if (tokens[0] is RightParenthesisToken)
+                        {
+                            tokens = tokens.Slice(1);
+                            parameters.Add(new CallParameterSyntaxNode(parent, exp, false));
+                            return parameters;
+                        }
+                        break;
+                }
+            }
+
+            throw new InvalidTokenException("Out of tokens");
         }
 
         private static FieldSyntaxNode ParseField(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
@@ -326,23 +530,54 @@ namespace Compiler.Parser
                 throw new InvalidTokenException("Name must be the 2nd token");
             }
 
-            tokens = tokens.Slice(2);
-
-            while (!tokens.IsEmpty)
+            if (!(tokens[2] is LeftParenthesisToken))
             {
-                var curToken = tokens[0];
-                tokens = tokens.Slice(1);
-
-                GC.KeepAlive(isStatic);
-
-                switch (curToken)
-                {
-                    default:
-                        throw new InvalidTokenException("Invalid token");
-                }
+                throw new InvalidTokenException("Must be left paranthesis");
             }
 
-            throw new InvalidTokenException("Out of tokens?");
+            tokens = tokens.Slice(3);
+
+
+            var parameters = ParseParameters(ref tokens, parent);
+
+            if (tokens.Length < 2)
+            {
+                throw new InvalidTokenException("Not enough tokens");
+            }
+
+            if (!(tokens[0] is LeftBraceToken))
+            {
+                throw new InvalidTokenException("Must be a left brace");
+            }
+
+            tokens = tokens.Slice(1);
+
+            var statements = new List<StatementSyntaxNode>();
+
+            while (true)
+            {
+                var stmt = ParseStatements(ref tokens, parent);
+
+                if (stmt == null)
+                {
+                    break;
+                }
+                statements.Add(stmt);
+            }
+
+            if (tokens.Length < 1)
+            {
+                throw new InvalidTokenException("Must have more tokens");
+            }
+
+            if (!(tokens[0] is RightBraceToken))
+            {
+                throw new InvalidTokenException("Must have a right brace");
+            }
+
+            tokens = tokens.Slice(1);
+
+            return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, statements);
         }
 
         private static ConstructorSyntaxNode ParseConstructor(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
@@ -359,22 +594,49 @@ namespace Compiler.Parser
             {
                 throw new InvalidTokenException("First token must be an open parenthesis");
             }
+            tokens = tokens.Slice(1);
+
+
+            var parameters = ParseParameters(ref tokens, parent);
+
+            if (tokens.Length < 2)
+            {
+                throw new InvalidTokenException("Not enough tokens");
+            }
+
+            if (!(tokens[0] is LeftBraceToken))
+            {
+                throw new InvalidTokenException("Must be a left brace");
+            }
 
             tokens = tokens.Slice(1);
 
-            while (!tokens.IsEmpty)
-            {
-                var curToken = tokens[0];
-                tokens = tokens.Slice(1);
+            var statements = new List<StatementSyntaxNode>();
 
-                switch (curToken)
+            while (true)
+            {
+                var stmt = ParseStatements(ref tokens, parent);
+
+                if (stmt == null)
                 {
-                    default:
-                        throw new InvalidTokenException("Invalid token");
+                    break;
                 }
+                statements.Add(stmt);
             }
 
-            throw new InvalidTokenException("Out of tokens?");
+            if (tokens.Length < 1)
+            {
+                throw new InvalidTokenException("Must have more tokens");
+            }
+
+            if (!(tokens[0] is RightBraceToken))
+            {
+                throw new InvalidTokenException("Must have a right brace");
+            }
+
+            tokens = tokens.Slice(1);
+
+            return new ConstructorSyntaxNode(parent, parameters, statements);
         }
 
         public static IReadOnlyList<ParameterDefinitionSyntaxNode> ParseParameters(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)

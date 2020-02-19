@@ -13,7 +13,7 @@ namespace Compiler.Test.Tokenizer
         [Fact]
         public void VerifyAllSingleCharTokensHaveACharValue()
         {
-            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
+            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => !x.IsInterface).Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
             foreach (var tokenClass in singleCharTokenClasses)
             {
@@ -27,7 +27,7 @@ namespace Compiler.Test.Tokenizer
         {
             var allowedChars = new List<char>(Compiler.Tokenizer.SimpleTokenizer.AllowedSingleCharacters);
 
-            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
+            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => !x.IsInterface).Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
             foreach (var tokenClass in singleCharTokenClasses)
             {
@@ -45,7 +45,7 @@ namespace Compiler.Test.Tokenizer
             IEnumerable<char> allowedChars = new List<char>(Compiler.Tokenizer.SimpleTokenizer.AllowedSingleCharacters);
             var keywordTokens = new List<char>();
 
-            var tokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
+            var tokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => !x.IsInterface).Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
             foreach (var tokenClass in tokenClasses)
             {
@@ -66,7 +66,7 @@ namespace Compiler.Test.Tokenizer
         public void VerifyAllSingleCharTokensParseCorrectly()
         {
             var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
-            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
+            var singleCharTokenClasses = typeof(ISingleCharToken).Assembly.GetTypes().Where(x => !x.IsInterface).Where(x => x.GetInterfaces().Contains(typeof(ISingleCharToken)));
 
             foreach (var tokenClass in singleCharTokenClasses)
             {

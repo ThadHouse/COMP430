@@ -39,7 +39,8 @@ namespace Compiler.Tokenizer
             "method",
             "ref",
             "new",
-            "newarr"
+            "newarr",
+            "while"
         };
 
         public static ISingleCharToken ParseSingleCharToken(char token)
@@ -111,6 +112,7 @@ namespace Compiler.Tokenizer
                 "ref" => new RefToken(),
                 "new" => new NewToken(),
                 "newarr" => new NewArrToken(),
+                "while" => new WhileToken(),
 
                 // Handle aliases
                 "int" => new AliasedIdentifierToken("System.Int32", tokenString),

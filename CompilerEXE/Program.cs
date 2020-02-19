@@ -17,14 +17,35 @@ namespace CompilerEXE
             var typeChecker = new SimpleTypeChecker();
             var codeGenerator = new CodeGenerator();
 
-            var code = "delegate void myFunc(int a, ref string b); delegate void otherfunc(); class A::B::MyClass { field int x = 5 + 3 + 6; field string val = \"hello\"; field string c = x.ToString(); } class OtherClass { field string g = new string(42); }";
+            var code = @"
+delegate void myFunc(int a, ref string b); delegate void otherfunc(); 
+
+class A::B::MyClass { 
+    constructor() {
+    }
+
+    method int myMethod() { 
+        return 42; 
+        return ""hello""; 
+        auto a = 42; 
+    }
+
+    field int x = 5 + 3 + 6;
+    field string val = ""hello""; 
+    field string c = x.ToString(); 
+} 
+
+class OtherClass { 
+    field string g = new string(42); 
+}
+";
 
             var tokens = tokenizer.EnumerateTokens(code.AsSpan());
 
             var ast = parser.ParseTokens(tokens);
 
             string assemblyName = "HelloWorld";
-            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), (AssemblyBuilderAccess)3); // 3 is run and save, not exposed in NETStandard
+            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(assemblyName, assemblyName + ".dll");
 
             var types = typeChecker.GenerateTypes(ast, createdModule);
