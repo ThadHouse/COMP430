@@ -537,7 +537,13 @@ namespace Compiler.Parser
 
             tokens = tokens.Slice(3);
 
+            (var parameters, var statements) = ParseMethodLike(ref tokens, parent);
 
+            return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, statements);
+        }
+
+        private static (IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, IReadOnlyList<StatementSyntaxNode> statements) ParseMethodLike(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        {
             var parameters = ParseParameters(ref tokens, parent);
 
             if (tokens.Length < 2)
@@ -577,13 +583,11 @@ namespace Compiler.Parser
 
             tokens = tokens.Slice(1);
 
-            return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, statements);
+            return (parameters, statements);
         }
 
         private static ConstructorSyntaxNode ParseConstructor(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
-            GC.KeepAlive(parent);
-
             // Constructor must have at least 4 more tokens () {}
             if (tokens.Length < 4)
             {
@@ -597,44 +601,7 @@ namespace Compiler.Parser
             tokens = tokens.Slice(1);
 
 
-            var parameters = ParseParameters(ref tokens, parent);
-
-            if (tokens.Length < 2)
-            {
-                throw new InvalidTokenException("Not enough tokens");
-            }
-
-            if (!(tokens[0] is LeftBraceToken))
-            {
-                throw new InvalidTokenException("Must be a left brace");
-            }
-
-            tokens = tokens.Slice(1);
-
-            var statements = new List<StatementSyntaxNode>();
-
-            while (true)
-            {
-                var stmt = ParseStatements(ref tokens, parent);
-
-                if (stmt == null)
-                {
-                    break;
-                }
-                statements.Add(stmt);
-            }
-
-            if (tokens.Length < 1)
-            {
-                throw new InvalidTokenException("Must have more tokens");
-            }
-
-            if (!(tokens[0] is RightBraceToken))
-            {
-                throw new InvalidTokenException("Must have a right brace");
-            }
-
-            tokens = tokens.Slice(1);
+            (var parameters, var statements) = ParseMethodLike(ref tokens, parent);
 
             return new ConstructorSyntaxNode(parent, parameters, statements);
         }
