@@ -46,14 +46,11 @@ namespace Compiler.TypeChecker
                 rightType = typeof(void);
             }
 
-            if (leftType != rightType)
+            if (!leftType.IsAssignableFrom(rightType))
             {
                 throw new InvalidOperationException($"Invalid Type Assignment, attempting to assign {rightType.FullName} to {leftType.FullName}");
             }
         }
-
-
-        private readonly Type[] delegateConstructorTypes = new Type[] { typeof(object), typeof(IntPtr) };
 
         public IReadOnlyList<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)> GenerateTypes(RootSyntaxNode typeRoot, ModuleBuilder moduleBuilder)
         {
@@ -103,11 +100,6 @@ namespace Compiler.TypeChecker
                 generatedTypeStore.Add(cls.Name);
 
                 var generatedType = moduleBuilder.DefineType(cls.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
-
-                // Delegates all have the same constructor, they can be already generated.
-
-                generatedType.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.Standard, delegateConstructorTypes)
-                .SetImplementationFlags(MethodImplAttributes.Runtime);
 
                 generatedTypes.Add((generatedType, cls));
 

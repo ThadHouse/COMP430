@@ -18,7 +18,7 @@ namespace CompilerEXE
             var codeGenerator = new CodeGenerator();
 
             var code = @"
-delegate void myFunc(int a, ref string b); delegate void otherfunc(); 
+delegate void myFunc(int a, string b); delegate void otherfunc(); 
 
 class A::B::MyClass { 
     constructor() {
@@ -32,9 +32,14 @@ class A::B::MyClass {
         return 42;
     }
 
+    method otherfunc getOtherFunc() {
+        auto a = new A::B::MyClass();
+        return a.testFunc;
+    }
+
     method void testFunc() {
         auto y = new A::B::MyClass();
-        y.other.g = ""I am setting another classes field"";
+        y.other.g = ""I am setting from a delegate"";
         System::Console.WriteLine(y.other.g);
     }
 
@@ -49,6 +54,7 @@ class A::B::MyClass {
         System::Console.WriteLine(y.x);
         y.other.g = ""I am setting another classes field"";
         System::Console.WriteLine(y.other.g);
+        y.getOtherFunc().Invoke();
     }
 
     method int myMethod() { 
@@ -56,6 +62,8 @@ class A::B::MyClass {
         a = a * 36;
         return a + 5;
     }
+
+     
 
     field int x = 5 + 3 + 7;
     field string val = ""hello""; 

@@ -78,7 +78,17 @@ namespace Compiler.Parser
                     {
                         tokens = tokens.Slice(2);
                         var parameters = ParseCallParameters(ref tokens, parent);
-                        return new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
+
+                        var methodExpression = new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
+
+                        var continuingExpression = ParseExpression(ref tokens, parent, methodExpression);
+                        
+                        if (continuingExpression != null)
+                        {
+                            return continuingExpression;
+                        }
+
+                        return methodExpression;
                     }
                     else if (tokens[1] is DotToken)
                     {

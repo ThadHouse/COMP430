@@ -13,8 +13,9 @@ namespace Compiler.CodeGeneration
     {
         private readonly Type[] bclTypes = typeof(object).Assembly.GetTypes();
 
+        private readonly Type[] delegateConstructorTypes = new Type[] { typeof(object), typeof(IntPtr) };
 
-        private void GenerateDelegateFunctions(TypeBuilder type, DelegateSyntaxNode syntaxNode, Dictionary<string, Type> legalTypes)
+        private ConstructorBuilder GenerateDelegateFunctions(TypeBuilder type, DelegateSyntaxNode syntaxNode, Dictionary<string, Type> legalTypes)
         {
             var parameterTypes = new Type[syntaxNode.Parameters.Count];
 
@@ -35,13 +36,17 @@ namespace Compiler.CodeGeneration
             {
                 method.DefineParameter(i + 1, ParameterAttributes.None, syntaxNode.Parameters[i].Name);
             }
+
+            var constructor = type.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.Standard, delegateConstructorTypes);
+            constructor.SetImplementationFlags(MethodImplAttributes.Runtime);
+            return constructor;
         }
 
         private (IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)> methods,
             IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)> constructors,
             IReadOnlyList<FieldBuilder> fields)
             GenerateClassDefinitions(TypeBuilder type, ClassSyntaxNode syntaxNode, IReadOnlyDictionary<string, Type> legalTypes,
-            ref MethodInfo? entryPoint)
+            IReadOnlyList<(DelegateSyntaxNode syntax, Type type, ConstructorBuilder construcotr)> delegates, ref MethodInfo? entryPoint)
         {
             var fields = new Dictionary<string, FieldBuilder>();
             var fieldBuilders = new List<FieldBuilder>();
@@ -107,7 +112,7 @@ namespace Compiler.CodeGeneration
                     parameterTypes.Add(i + 1, parameters[i]);
                 }
 
-                var genStore = new GenerationStore(false, fields, parametersInfo, legalTypes, parameterTypes, null);
+                var genStore = new GenerationStore(type, false, fields, parametersInfo, legalTypes, parameterTypes, delegates, null);
                 toCompileConstructorsList.Add((method, methodNode, genStore));
             }
 
@@ -158,7 +163,7 @@ namespace Compiler.CodeGeneration
                     parameterTypes.Add(i + 1 + offset, parameters[i]);
                 }
 
-                var genStore = new GenerationStore(methodNode.IsStatic, fields, parametersInfo, legalTypes, parameterTypes, returnType);
+                var genStore = new GenerationStore(type, methodNode.IsStatic, fields, parametersInfo, legalTypes, parameterTypes, delegates, returnType);
                 toCompileMethodList.Add((method, methodNode, genStore));
             }
 
@@ -228,15 +233,19 @@ namespace Compiler.CodeGeneration
             var toCompileConstructors = new Dictionary<Type, IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>>();
             var toCompileFields = new Dictionary<Type, IReadOnlyList<FieldBuilder>>();
 
+            var delegates = new List<(DelegateSyntaxNode syntax, Type type, ConstructorBuilder constructor)>();
+
             foreach (var genTypes in types)
             {
                 if (genTypes.syntax is DelegateSyntaxNode delegateNode)
                 {
-                    GenerateDelegateFunctions(genTypes.typeBuilder, delegateNode, legalTypes);
+                    var constructor = GenerateDelegateFunctions(genTypes.typeBuilder, delegateNode, legalTypes);
+                    delegates.Add((delegateNode, genTypes.typeBuilder, constructor));
+                    genTypes.typeBuilder.CreateTypeInfo();
                 }
                 else if (genTypes.syntax is ClassSyntaxNode classNode)
                 {
-                    var typeMethods = GenerateClassDefinitions(genTypes.typeBuilder, classNode, legalTypes, ref entryPoint);
+                    var typeMethods = GenerateClassDefinitions(genTypes.typeBuilder, classNode, legalTypes, delegates, ref entryPoint);
                     toCompileMethods.Add(genTypes.typeBuilder, typeMethods.methods);
                     toCompileConstructors.Add(genTypes.typeBuilder, typeMethods.constructors);
                     toCompileFields.Add(genTypes.typeBuilder, typeMethods.fields);
@@ -263,7 +272,6 @@ namespace Compiler.CodeGeneration
                     methodToCompile.store.GettingCompiledFields = toCompileFields;
                     GenerateConstructors(methodToCompile);
                 }
-                ((TypeBuilder)typeToCompile.Key).CreateTypeInfo();
             }
 
             foreach (var genTypes in types)

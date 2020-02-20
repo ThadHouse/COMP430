@@ -13,8 +13,13 @@ namespace Compiler.CodeGeneration
 {
     public class GenerationStore
     {
+        public Type CurrentType { get; }
+
         public bool IsStatic { get; }
         public IDictionary<string, LocalBuilder> Locals { get; } = new Dictionary<string, LocalBuilder>();
+
+        public IReadOnlyList<(DelegateSyntaxNode syntax, Type type, ConstructorBuilder constructor)> Delegates { get; }
+
         public IReadOnlyDictionary<string, FieldBuilder> Fields { get; }
 
         public IReadOnlyDictionary<Type, IReadOnlyList<FieldBuilder>>? GettingCompiledFields { get; set; }
@@ -31,16 +36,19 @@ namespace Compiler.CodeGeneration
 
         public Type? ReturnType { get; }
 
-        public GenerationStore(bool isStatic, IReadOnlyDictionary<string, FieldBuilder> fields,
+        public GenerationStore(Type currentType, bool isStatic, IReadOnlyDictionary<string, FieldBuilder> fields,
             IReadOnlyDictionary<string, int> parameters, IReadOnlyDictionary<string, Type> allowedTypes,
-            IReadOnlyDictionary<int, Type> parameterTypes, Type? returnType)
+            IReadOnlyDictionary<int, Type> parameterTypes,
+            IReadOnlyList<(DelegateSyntaxNode syntax, Type type, ConstructorBuilder constructor)> delegates, Type? returnType)
         {
+            CurrentType = currentType;
             IsStatic = isStatic;
             Fields = fields;
             Parameters = parameters;
             AllowedTypes = allowedTypes;
             ParameterTypes = parameterTypes;
             ReturnType = returnType;
+            Delegates = delegates;
         }
     }
 
@@ -298,6 +306,48 @@ namespace Compiler.CodeGeneration
                         }
                         else
                         {
+                            // Try to see if we are trying to grab a delegate
+                            foreach (var method in store.GettingCompiledTypes![store.CurrentType])
+                            {
+                                if (method.syntax.Name != varNode.Name)
+                                {
+                                    continue;
+                                }
+
+                                if (!method.syntax.IsStatic)
+                                {
+                                    throw new InvalidOperationException("Cannot grab a direct reference to a instance delegate");
+                                }
+
+                                var numParameters = method.syntax.Parameters.Count;
+
+                                Type? actionType = null;
+                                ConstructorBuilder? constructor = null;
+
+                                foreach (var del in store.Delegates)
+                                {
+                                    if (del.syntax.ReturnType == method.syntax.ReturnType
+                                        && del.syntax.Parameters.Select(x => x.Type).SequenceEqual(method.syntax.Parameters.Select(x => x.Type)))
+                                    {
+                                        actionType = del.type;
+                                        constructor = del.constructor;
+                                        break;
+                                    }
+                                }
+
+                                if (actionType == null || constructor == null)
+                                {
+                                    throw new InvalidOperationException("Action type was not found");
+                                }
+
+                                generator.Emit(OpCodes.Ldnull);
+                                generator.Emit(OpCodes.Ldftn, method.builder);
+                                generator.Emit(OpCodes.Newobj, constructor);
+                                expressionResultType = actionType;
+                                return;
+                                ;
+                            }
+
                             throw new InvalidOperationException("Not supported");
                         }
 
@@ -339,26 +389,45 @@ namespace Compiler.CodeGeneration
                     ;
                     break;
                 case MethodCallExpression methodCall:
-                    if (methodCall.Expression is VariableSyntaxNode vdn)
                     {
                         bool isStatic = true;
-                        if (!store.AllowedTypes.TryGetValue(vdn.Name, out var callTarget))
+                        Type? callTarget = null;
+                        if (methodCall.Expression is MethodCallExpression)
                         {
                             isStatic = false;
+                            WriteExpression(generator, store, methodCall.Expression, true, ref callTarget);
+                        }
 
-                            Type? rexpressionType = null;
-
-                            WriteExpression(generator, store, vdn, true, ref rexpressionType);
-
-                            if (rexpressionType == null)
+                        else if (methodCall.Expression is VariableSyntaxNode vdn)
+                        {
+                            if (!store.AllowedTypes.TryGetValue(vdn.Name, out callTarget))
                             {
-                                throw new InvalidOperationException("Target for call not found");
-                            }
-                            else
-                            {
-                                callTarget = rexpressionType;
+                                isStatic = false;
+
+                                Type? rexpressionType = null;
+
+                                WriteExpression(generator, store, vdn, true, ref rexpressionType);
+
+                                if (rexpressionType == null)
+                                {
+                                    throw new InvalidOperationException("Target for call not found");
+                                }
+                                else
+                                {
+                                    callTarget = rexpressionType;
+                                }
                             }
                         }
+                        else
+                        {
+                            throw new InvalidOperationException("Op not suppored");
+                        }
+
+                        if (callTarget == null)
+                        {
+                            throw new InvalidOperationException("Must have a target");
+                        }
+
                         var callParameterTypes = new List<Type>();
                         // Calling a static function
                         foreach (var callParams in methodCall.Parameters)
@@ -372,7 +441,7 @@ namespace Compiler.CodeGeneration
                         {
                             foreach (var localMethod in localMethodList)
                             {
-                                if (localMethod.syntax.Name == methodCall.Name && (localMethod.builder.IsStatic && isStatic))
+                                if (localMethod.syntax.Name == methodCall.Name && (localMethod.builder.IsStatic == isStatic))
                                 {
                                     var localMethodParameters = localMethod.syntax.Parameters.Select(x => store.AllowedTypes[x.Type]);
                                     if (callParameterTypes.SequenceEqual(localMethodParameters))
@@ -430,6 +499,7 @@ namespace Compiler.CodeGeneration
 
                         }
                         expressionResultType = methodToCall.ReturnType;
+
                     }
                     break;
                 case NewConstructorExpression newConstructor:
