@@ -23,6 +23,8 @@ namespace Compiler.CodeGeneration
 
         public IReadOnlyDictionary<Type, IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>>? GettingCompiledTypes { get; set; }
 
+        public IReadOnlyDictionary<Type, IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>>? GettingCompiledTypeConstructors { get; set; }
+
         public IReadOnlyDictionary<int, Type> ParameterTypes { get; }
 
         public Type ReturnType { get; }
@@ -243,35 +245,108 @@ namespace Compiler.CodeGeneration
                 case MethodCallExpression methodCall:
                     if (methodCall.Expression is VariableSyntaxNode vdn)
                     {
-                        if (store.AllowedTypes.TryGetValue(vdn.Name, out var callTarget))
+                        bool isStatic = true;
+                        if (!store.AllowedTypes.TryGetValue(vdn.Name, out var callTarget))
+                        {
+                            isStatic = false;
+
+                            Type? rexpressionType = null;
+
+                            WriteExpression(generator, store, vdn, true, ref rexpressionType);
+
+                            if (rexpressionType == null)
+                            {
+                                throw new InvalidOperationException("Target for call not found");
+                            }
+                            else
+                            {
+                                callTarget = rexpressionType;
+                            }
+                        }
+                        var callParameterTypes = new List<Type>();
+                        // Calling a static function
+                        foreach (var callParams in methodCall.Parameters)
+                        {
+                            callParameterTypes.Add(WriteCallParameter(generator, store, callParams));
+                        }
+
+                        MethodInfo? methodToCall = null;
+
+                        if (store.GettingCompiledTypes!.TryGetValue(callTarget, out var localMethodList))
+                        {
+                            foreach (var localMethod in localMethodList)
+                            {
+                                if (localMethod.syntax.Name == methodCall.Name && (localMethod.builder.IsStatic && isStatic))
+                                {
+                                    var localMethodParameters = localMethod.syntax.Parameters.Select(x => store.AllowedTypes[x.Type]);
+                                    if (callParameterTypes.SequenceEqual(localMethodParameters))
+                                    {
+                                        methodToCall = localMethod.builder;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var bindingFlags = BindingFlags.Public;
+                            if (isStatic)
+                            {
+                                bindingFlags |= BindingFlags.Static;
+                            }
+                            else
+                            {
+                                bindingFlags |= BindingFlags.Instance;
+                            }
+                            methodToCall = callTarget.GetMethod(methodCall.Name, bindingFlags, null, callParameterTypes.ToArray(), null);
+                        }
+
+
+                        if (methodToCall == null)
+                        {
+                            throw new InvalidOperationException("Method not found");
+                        }
+                        if (isStatic)
+                        {
+                            generator.EmitCall(OpCodes.Call, methodToCall, null);
+                        }
+                        else
+                        {
+                            // Find the object getting called
+
+                            generator.EmitCall(OpCodes.Callvirt, methodToCall, null);
+                        }
+                        expressionResultType = methodToCall.ReturnType;
+                    }
+                    break;
+                case NewConstructorExpression newConstructor:
+                    {
+                        if (store.AllowedTypes.TryGetValue(newConstructor.Name, out var callTarget))
                         {
                             var callParameterTypes = new List<Type>();
                             // Calling a static function
-                            foreach (var callParams in methodCall.Parameters)
+                            foreach (var callParams in newConstructor.Parameters)
                             {
                                 callParameterTypes.Add(WriteCallParameter(generator, store, callParams));
                             }
 
-                            MethodInfo? methodToCall = null;
+                            ConstructorInfo? methodToCall = null;
 
-                            if (store.GettingCompiledTypes!.TryGetValue(callTarget, out var localMethodList))
+                            if (store.GettingCompiledTypeConstructors!.TryGetValue(callTarget, out var localConstructorList))
                             {
-                                foreach (var localMethod in localMethodList)
+                                foreach (var localMethod in localConstructorList)
                                 {
-                                    if (localMethod.syntax.Name == methodCall.Name && localMethod.builder.IsStatic)
+                                    var localMethodParameters = localMethod.syntax.Parameters.Select(x => store.AllowedTypes[x.Type]);
+                                    if (callParameterTypes.SequenceEqual(localMethodParameters))
                                     {
-                                        var localMethodParameters = localMethod.syntax.Parameters.Select(x => store.AllowedTypes[x.Type]);
-                                        if (callParameterTypes.SequenceEqual(localMethodParameters))
-                                        {
-                                            methodToCall = localMethod.builder;
-                                            break;
-                                        }
+                                        methodToCall = localMethod.builder;
+                                        break;
                                     }
                                 }
                             }
                             else
                             {
-                                methodToCall = callTarget.GetMethod(methodCall.Name, BindingFlags.Public | BindingFlags.Static, null, callParameterTypes.ToArray(), null);
+                                methodToCall = callTarget.GetConstructor(BindingFlags.Public | BindingFlags.Instance, null, callParameterTypes.ToArray(), null);
                             }
 
 
@@ -279,18 +354,14 @@ namespace Compiler.CodeGeneration
                             {
                                 throw new InvalidOperationException("Method not found");
                             }
-                            generator.EmitCall(OpCodes.Call, methodToCall, null);
-                            expressionResultType = methodToCall.ReturnType;
+                            generator.Emit(OpCodes.Newobj, methodToCall);
+                            expressionResultType = callTarget;
                         }
                         else
                         {
                             ;
                         }
-                        ;
                     }
-                    // methodCall.Expression
-
-                    var nme = methodCall.Name;
                     break;
                 default:
                     throw new InvalidOperationException("Not implemented expression type");

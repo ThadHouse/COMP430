@@ -36,7 +36,8 @@ namespace Compiler.CodeGeneration
             }
         }
 
-        private IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>
+        private (IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)> methods,
+            IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)> constructors)
             GenerateClassDefinitions(TypeBuilder type, ClassSyntaxNode syntaxNode, IReadOnlyDictionary<string, Type> legalTypes,
             ref MethodInfo? entryPoint)
         {
@@ -44,6 +45,7 @@ namespace Compiler.CodeGeneration
             var fieldsToConstructInConstructor = new List<(FieldBuilder fieldBuilder, ExpressionSyntaxNode expression)>();
 
             var toCompileMethodList = new List<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>();
+            var toCompileConstructorsList = new List<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>();
 
             foreach (var field in syntaxNode.Fields)
             {
@@ -109,17 +111,14 @@ namespace Compiler.CodeGeneration
                 toCompileMethodList.Add((method, methodNode, genStore));
             }
 
-            return toCompileMethodList;
+            return (toCompileMethodList, toCompileConstructorsList);
         }
 
-        private void GenerateMethods((MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store) data,
-            IReadOnlyDictionary<Type, IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>> methodsBeingCompiled)
+        private void GenerateMethods((MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store) data)
         {
             var generator = data.builder.GetILGenerator();
 
             bool wasLastReturn = false;
-
-            data.store.GettingCompiledTypes = methodsBeingCompiled;
 
             foreach (var stmt in data.syntax.Statements)
             {
@@ -153,6 +152,7 @@ namespace Compiler.CodeGeneration
             MethodInfo? entryPoint = null;
 
             var toCompileMethods = new Dictionary<Type, IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>>();
+            var toCompileConstructors = new Dictionary<Type, IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>>();
 
             foreach (var genTypes in types)
             {
@@ -164,7 +164,8 @@ namespace Compiler.CodeGeneration
                 else if (genTypes.syntax is ClassSyntaxNode classNode)
                 {
                     var typeMethods = GenerateClassDefinitions(genTypes.typeBuilder, classNode, legalTypes, ref entryPoint);
-                    toCompileMethods.Add(genTypes.typeBuilder, typeMethods);
+                    toCompileMethods.Add(genTypes.typeBuilder, typeMethods.methods);
+                    toCompileConstructors.Add(genTypes.typeBuilder, typeMethods.constructors);
                 }
             }
 
@@ -172,7 +173,9 @@ namespace Compiler.CodeGeneration
             {
                 foreach (var methodToCompile in typeToCompile.Value)
                 {
-                    GenerateMethods(methodToCompile, toCompileMethods);
+                    methodToCompile.store.GettingCompiledTypes = toCompileMethods;
+                    methodToCompile.store.GettingCompiledTypeConstructors = toCompileConstructors;
+                    GenerateMethods(methodToCompile);
                 }
                 ((TypeBuilder)typeToCompile.Key).CreateTypeInfo();
             }

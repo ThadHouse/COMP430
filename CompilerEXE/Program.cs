@@ -31,6 +31,8 @@ class A::B::MyClass {
     method entrypoint void Main() {
         System::Console.WriteLine(""Hello World!"");
         System::Console.WriteLine(A::B::MyClass.StaticMethod());
+        auto x = new object();
+        System::Console.WriteLine(x.ToString());
     }
 
     method int myMethod() { 
