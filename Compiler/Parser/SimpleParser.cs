@@ -114,6 +114,11 @@ namespace Compiler.Parser
                         return new ExpressionEqualsExpressionSyntaxNode(parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name), couldBeRight);
                         ;
                     }
+                    else if (tokens[1] is SemiColonToken)
+                    {
+                        tokens = tokens.Slice(1);
+                        return new MethodReferenceExpression(parent, wouldBeLeft, id.Name);
+                    }
                     else
                     {
                         throw new InvalidTokenException("A token must be handled here");

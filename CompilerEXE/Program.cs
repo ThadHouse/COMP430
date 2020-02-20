@@ -33,14 +33,11 @@ class A::B::MyClass {
     }
 
     method otherfunc getOtherFunc() {
-        auto a = new A::B::MyClass();
-        return a.testFunc;
+        return testFunc;
     }
 
     method void testFunc() {
-        auto y = new A::B::MyClass();
-        y.other.g = ""I am setting from a delegate"";
-        System::Console.WriteLine(y.other.g);
+        c = ""Called from an instance delegate"";
     }
 
     method entrypoint void Main() {
@@ -55,6 +52,7 @@ class A::B::MyClass {
         y.other.g = ""I am setting another classes field"";
         System::Console.WriteLine(y.other.g);
         y.getOtherFunc().Invoke();
+        System::Console.WriteLine(y.c);
     }
 
     method int myMethod() { 

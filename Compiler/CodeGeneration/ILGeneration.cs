@@ -314,7 +314,7 @@ namespace Compiler.CodeGeneration
                                     continue;
                                 }
 
-                                if (!method.syntax.IsStatic)
+                                if (!method.syntax.IsStatic && store.IsStatic)
                                 {
                                     throw new InvalidOperationException("Cannot grab a direct reference to a instance delegate");
                                 }
@@ -340,7 +340,14 @@ namespace Compiler.CodeGeneration
                                     throw new InvalidOperationException("Action type was not found");
                                 }
 
-                                generator.Emit(OpCodes.Ldnull);
+                                if (store.IsStatic)
+                                {
+                                    generator.Emit(OpCodes.Ldnull);
+                                }
+                                else
+                                {
+                                    generator.Emit(OpCodes.Ldarg_0);
+                                }
                                 generator.Emit(OpCodes.Ldftn, method.builder);
                                 generator.Emit(OpCodes.Newobj, constructor);
                                 expressionResultType = actionType;
@@ -354,6 +361,59 @@ namespace Compiler.CodeGeneration
 
                     }
                     break;
+                case MethodReferenceExpression methodRef:
+                    {
+                        Type? callTarget = null;
+                        WriteExpression(generator, store, methodRef.Expression, true, ref callTarget);
+
+                        if (callTarget == null)
+                        {
+                            throw new InvalidOperationException("Method ref target cannot be null");
+                        }
+
+                        foreach (var method in store.GettingCompiledTypes![callTarget])
+                        {
+                            if (method.syntax.Name != methodRef.Name)
+                            {
+                                continue;
+                            }
+
+                            if (method.syntax.IsStatic)
+                            {
+                                throw new InvalidOperationException("Cannot grab an instance reference to a static delegate");
+                            }
+
+                            var numParameters = method.syntax.Parameters.Count;
+
+                            Type? actionType = null;
+                            ConstructorBuilder? constructor = null;
+
+                            foreach (var del in store.Delegates)
+                            {
+                                if (del.syntax.ReturnType == method.syntax.ReturnType
+                                    && del.syntax.Parameters.Select(x => x.Type).SequenceEqual(method.syntax.Parameters.Select(x => x.Type)))
+                                {
+                                    actionType = del.type;
+                                    constructor = del.constructor;
+                                    break;
+                                }
+                            }
+
+                            if (actionType == null || constructor == null)
+                            {
+                                throw new InvalidOperationException("Action type was not found");
+                            }
+
+                            // Object is already on stack
+                            generator.Emit(OpCodes.Ldftn, method.builder);
+                            generator.Emit(OpCodes.Newobj, constructor);
+                            expressionResultType = actionType;
+                            return;
+                            ;
+                        }
+
+                        throw new InvalidOperationException("Not supported");
+                    }
                 case ExpressionOpExpressionSyntaxNode expOpEx:
                     {
                         Type? leftType = null;
