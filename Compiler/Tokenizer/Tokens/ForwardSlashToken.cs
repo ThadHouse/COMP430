@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class ForwardSlashToken : ISupportedOperationToken
+    public class ForwardSlashToken : ISupportedOperationToken, ISingleCharToken
     {
         public const char CharValue = '/';
 

@@ -32,6 +32,12 @@ class A::B::MyClass {
         return 42;
     }
 
+    method void testFunc() {
+        auto y = new A::B::MyClass();
+        y.other.g = ""I am setting another classes field"";
+        System::Console.WriteLine(y.other.g);
+    }
+
     method entrypoint void Main() {
         System::Console.WriteLine(""Hello World!"");
         System::Console.WriteLine(A::B::MyClass.StaticMethod());
@@ -41,6 +47,8 @@ class A::B::MyClass {
         System::Console.WriteLine(y.val);
         System::Console.WriteLine(y.c);
         System::Console.WriteLine(y.x);
+        y.other.g = ""I am setting another classes field"";
+        System::Console.WriteLine(y.other.g);
     }
 
     method int myMethod() { 
@@ -52,6 +60,7 @@ class A::B::MyClass {
     field int x = 5 + 3 + 7;
     field string val = ""hello""; 
     field string c; 
+    field OtherClass other = new OtherClass();
 } 
 
 class OtherClass { 

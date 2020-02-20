@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class PlusToken : ISupportedOperationToken
+    public class PlusToken : ISupportedOperationToken, ISingleCharToken
     {
         public const char CharValue = '+';
 

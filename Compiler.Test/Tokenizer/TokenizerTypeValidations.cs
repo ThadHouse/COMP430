@@ -73,7 +73,7 @@ namespace Compiler.Test.Tokenizer
                 var tokenCharValueField = tokenClass.GetField("CharValue", BindingFlags.Public | BindingFlags.Static);
                 char c = (char)tokenCharValueField.GetValue(null);
 
-                Assert.IsType(tokenClass, SimpleTokenizer.ParseSingleCharToken(c));
+                Assert.IsType(tokenClass, SimpleTokenizer.ParseSingleCharToken(c, null));
             }
         }
 

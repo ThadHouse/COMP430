@@ -46,38 +46,18 @@ namespace Compiler.Parser
                         throw new InvalidTokenException("Left can't be null here");
                     }
 
-                    // Check to see if next token is another equals. If so, its an ==
-                    if (tokens.IsEmpty)
+                    var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                    if (couldBeRight == null)
                     {
-                        throw new InvalidTokenException("There must be more tokens here");
+                        throw new InvalidTokenException("Right can't be null either");
                     }
-                    if (tokens[0] is EqualsToken)
-                    {
-                        tokens = tokens.Slice(1);
-                        var couldBeRight = ParseExpression(ref tokens, parent, null);
 
-                        if (couldBeRight == null)
-                        {
-                            throw new InvalidTokenException("Right can't be null either");
-                        }
-
-                        return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, SupportedOperation.Equals), couldBeRight);
-                    }
-                    else
-                    {
-                        var couldBeRight = ParseExpression(ref tokens, parent, null);
-
-                        if (couldBeRight == null)
-                        {
-                            throw new InvalidTokenException("Right can't be null either");
-                        }
-
-                        return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
-                    }
+                    return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
                 }
                 else if (curToken is DotToken)
                 {
-                    // Method call
+                    // Method call or lots of fields
                     // Next token must be an identifier
                     if (tokens.Length < 3)
                     {
@@ -103,12 +83,30 @@ namespace Compiler.Parser
                     else if (tokens[1] is DotToken)
                     {
                         tokens = tokens.Slice(1);
-                        return ParseExpression(ref tokens, parent, wouldBeLeft);
+                        return ParseExpression(ref tokens, parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name));
                     }
                     else if (tokens[1] is RightParenthesisToken)
                     {
                         tokens = tokens.Slice(1);
                         return new VariableAccessExpression(parent, wouldBeLeft, id.Name);
+                    }
+                    else if (tokens[1] is EqualsToken)
+                    {
+                        tokens = tokens.Slice(2);
+
+                        var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                        if (couldBeRight == null)
+                        {
+                            throw new InvalidTokenException("Right cannot be null here");
+                        }
+
+                        return new ExpressionEqualsExpressionSyntaxNode(parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name), couldBeRight);
+                        ;
+                    }
+                    else
+                    {
+                        throw new InvalidTokenException("A token must be handled here");
                     }
 
 

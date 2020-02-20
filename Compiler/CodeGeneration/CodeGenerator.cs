@@ -171,7 +171,7 @@ namespace Compiler.CodeGeneration
 
             bool wasLastReturn = false;
 
-            if (data.syntax.Name == "myMethod")
+            if (data.syntax.Name == "testFunc")
             {
                 ;
             }

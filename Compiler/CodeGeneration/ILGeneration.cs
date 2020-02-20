@@ -81,10 +81,45 @@ namespace Compiler.CodeGeneration
                     {
                         throw new InvalidOperationException("Not supported");
                     }
+                case VariableAccessExpression varAccess:
+                    {
+                        Type? callTarget = null;
+                        WriteExpression(generator, store, varAccess.Expression, true, ref callTarget);
+
+                        if (callTarget == null)
+                        {
+                            throw new InvalidOperationException("No target for field access");
+                        }
+
+                        FieldInfo? methodToCall = null;
+
+                        if (store.GettingCompiledFields!.TryGetValue(callTarget, out var localMethodList))
+                        {
+                            foreach (var localMethod in localMethodList)
+                            {
+                                if (localMethod.Name == varAccess.Name)
+                                {
+                                    methodToCall = localMethod;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+                            methodToCall = callTarget.GetField(varAccess.Name, bindingFlags);
+                        }
+
+                        if (methodToCall == null)
+                        {
+                            throw new InvalidOperationException("Field target not found");
+                        }
+
+                        expressionResultType = methodToCall.FieldType;
+                        return () => generator.Emit(OpCodes.Stfld, methodToCall);
+                    }
                 default:
-                    expressionResultType = null;
-                    WriteExpression(generator, store, expression, false, ref expressionResultType);
-                    return () => { };
+                    throw new InvalidOperationException("No other type of operations supported as lvalue");
             }
         }
 
@@ -257,7 +292,7 @@ namespace Compiler.CodeGeneration
                             }
                             else
                             {
-                                throw new InvalidOperationException("Store field cannot be handled here");
+                                generator.Emit(OpCodes.Stfld, fieldVar);
                             }
                             expressionResultType = fieldVar.FieldType;
                         }
@@ -475,10 +510,16 @@ namespace Compiler.CodeGeneration
                             throw new InvalidOperationException("Field target not found");
                         }
 
-                        generator.Emit(OpCodes.Ldfld, methodToCall);
-                        expressionResultType = methodToCall.FieldType;
+                        if (isRight)
+                        {
 
-                        ;
+                            generator.Emit(OpCodes.Ldfld, methodToCall);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Stfld, methodToCall);
+                        }
+                        expressionResultType = methodToCall.FieldType;
                     }
                     break;
                 default:

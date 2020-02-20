@@ -43,8 +43,17 @@ namespace Compiler.Tokenizer
             "while"
         };
 
-        public static ISingleCharToken ParseSingleCharToken(char token)
+        public static IToken ParseSingleCharToken(char token, char? nextToken)
         {
+            if (token == '=')
+            {
+                if (nextToken != null && nextToken == '=')
+                {
+                    return new DoubleEqualsToken();
+                }
+                return new EqualsToken();
+            }
+
             return token switch
             {
                 '[' => new LeftBracketToken(),
@@ -56,7 +65,6 @@ namespace Compiler.Tokenizer
                 ';' => new SemiColonToken(),
                 '.' => new DotToken(),
                 ',' => new CommaToken(),
-                '=' => new EqualsToken(),
                 '-' => new MinusToken(),
                 '+' => new PlusToken(),
                 '&' => new AmpersandToken(),
@@ -262,7 +270,20 @@ namespace Compiler.Tokenizer
                         hasReadADot = false;
                     }
 
-                    tokens.Add(ParseSingleCharToken(currentChar));
+                    char? nextToken = null;
+                    if (i < (input.Length - 1))
+                    {
+                        nextToken = input[i + 1];
+                    }
+
+                    var nextTokenToAdd = ParseSingleCharToken(currentChar, nextToken);
+
+                    if (nextTokenToAdd is IMultiCharOperationToken)
+                    {
+                        i++;
+                    }
+
+                    tokens.Add(nextTokenToAdd);
                 }
                 else if (char.IsLetterOrDigit(currentChar) || currentChar == '_' || currentChar == ':')
                 {
