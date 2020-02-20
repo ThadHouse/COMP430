@@ -46,6 +46,48 @@ namespace Compiler.CodeGeneration
 
     public static class ILGeneration
     {
+        public static Action WriteLValueExpression(ILGenerator generator, GenerationStore store, ExpressionSyntaxNode expression, out Type? expressionResultType)
+        {
+            if (generator == null)
+            {
+                throw new ArgumentNullException(nameof(generator));
+            }
+
+            if (store == null)
+            {
+                throw new ArgumentNullException(nameof(store));
+            }
+
+            switch (expression)
+            {
+                case VariableSyntaxNode varNode:
+                    if (store.Locals.TryGetValue(varNode.Name, out var localVar))
+                    {
+                        expressionResultType = localVar.LocalType;
+                        return () => generator.Emit(OpCodes.Stloc, localVar);
+                    }
+                    else if (store.Parameters.TryGetValue(varNode.Name, out var parameterVar))
+                    {
+                        expressionResultType = store.ParameterTypes[parameterVar];
+                        return () => generator.Emit(OpCodes.Starg, parameterVar);
+                    }
+                    else if (store.Fields.TryGetValue(varNode.Name, out var fieldVar))
+                    {
+                        generator.Emit(OpCodes.Ldarg_0);
+                        expressionResultType = fieldVar.FieldType;
+                        return () => generator.Emit(OpCodes.Stfld, fieldVar);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Not supported");
+                    }
+                default:
+                    expressionResultType = null;
+                    WriteExpression(generator, store, expression, false, ref expressionResultType);
+                    return () => { };
+            }
+        }
+
         public static bool WriteStatement(ILGenerator generator, GenerationStore store, StatementSyntaxNode statement)
         {
             if (generator == null)
@@ -88,11 +130,24 @@ namespace Compiler.CodeGeneration
                         generator.Emit(OpCodes.Stloc, loc);
                     }
                     break;
+                case ExpressionEqualsExpressionSyntaxNode expEqualsExp:
+                    {
+                        Type? rightType = null;
+
+                        var lastOp = WriteLValueExpression(generator, store, expEqualsExp.Left, out var leftType);
+
+                        WriteExpression(generator, store, expEqualsExp.Right, true, ref rightType);
+                        TypeCheck(leftType, rightType);
+
+                        lastOp();
+                    }
+                    break;
                 case ExpressionSyntaxNode expStatement:
                     WriteExpression(generator, store, expStatement, false, ref expressionResultType);
                     if (expressionResultType != null && expressionResultType != typeof(void))
                     {
-                        generator.Emit(OpCodes.Pop);
+                        throw new NotSupportedException("Stack must be emptied");
+                        //generator.Emit(OpCodes.Pop);
                     }
                     break;
                 case BaseClassConstructorSyntax _:
@@ -122,7 +177,7 @@ namespace Compiler.CodeGeneration
         }
 
         public static void WriteExpression(ILGenerator generator, GenerationStore store, ExpressionSyntaxNode? expression, bool isRight,
-            ref Type? expressionResultType)
+      ref Type? expressionResultType)
         {
             if (expression == null)
             {
@@ -173,7 +228,6 @@ namespace Compiler.CodeGeneration
                             else
                             {
                                 generator.Emit(OpCodes.Stloc, localVar);
-                                generator.Emit(OpCodes.Pop);
                             }
                             expressionResultType = localVar.LocalType;
                         }
@@ -186,7 +240,6 @@ namespace Compiler.CodeGeneration
                             else
                             {
                                 generator.Emit(OpCodes.Starg, parameterVar);
-                                generator.Emit(OpCodes.Pop);
                             }
                             expressionResultType = store.ParameterTypes[parameterVar];
                         }
@@ -204,7 +257,7 @@ namespace Compiler.CodeGeneration
                             }
                             else
                             {
-                                generator.Emit(OpCodes.Stfld, fieldVar);
+                                throw new InvalidOperationException("Store field cannot be handled here");
                             }
                             expressionResultType = fieldVar.FieldType;
                         }
@@ -216,24 +269,6 @@ namespace Compiler.CodeGeneration
 
                     }
                     break;
-                case ExpressionEqualsExpressionSyntaxNode expEqualsExp:
-                    {
-                        Type? leftType = null;
-                        Type? rightType = null;
-
-                            if (expEqualsExp.Left is VariableSyntaxNode && !store.IsStatic)
-                            {
-                                generator.Emit(OpCodes.Ldarg_0);
-                            }
-
-                            WriteExpression(generator, store, expEqualsExp.Right, true, ref rightType);
-                            WriteExpression(generator, store, expEqualsExp.Left, false, ref leftType);
-                            TypeCheck(leftType, rightType);
-
-
-
-                            return;
-                    }
                 case ExpressionOpExpressionSyntaxNode expOpEx:
                     {
                         Type? leftType = null;

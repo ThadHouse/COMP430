@@ -171,6 +171,11 @@ namespace Compiler.CodeGeneration
 
             bool wasLastReturn = false;
 
+            if (data.syntax.Name == "myMethod")
+            {
+                ;
+            }
+
             foreach (var stmt in data.syntax.Statements)
             {
                 wasLastReturn = ILGeneration.WriteStatement(generator, data.store, stmt);
