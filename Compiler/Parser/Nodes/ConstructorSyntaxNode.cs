@@ -9,7 +9,7 @@ namespace Compiler.Parser.Nodes
     public class ConstructorSyntaxNode : ISyntaxNode
     {
 
-        private IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
+        public IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
 
         public IReadOnlyList<StatementSyntaxNode> Statements { get; }
 

@@ -10,6 +10,49 @@ namespace Compiler.TypeChecker
 {
     public class SimpleTypeChecker : ITypeChecker
     {
+        public static void CheckCanArithmaticTypeOperations(Type? leftType, Type? rightType)
+        {
+            if (leftType == null)
+            {
+                throw new ArgumentNullException(nameof(leftType), "Left type really cannot be null here");
+            }
+
+            if (rightType == null)
+            {
+                throw new ArgumentNullException(nameof(rightType), "Right type really cannot be null here");
+            }
+
+            if (rightType != leftType)
+            {
+                throw new InvalidOperationException($"Types must be equal: {leftType.FullName} - {rightType.FullName}");
+            }
+
+            if (leftType != typeof(int))
+            {
+                throw new InvalidOperationException($"Cannot perform arithmatic on {leftType.FullName}");
+            }
+        }
+
+        public static void TypeCheck(Type? leftType, Type? rightType)
+        {
+            if (leftType == null)
+            {
+                throw new ArgumentNullException(nameof(leftType), "Left type really cannot be null here");
+            }
+
+            // A null right type is void
+            if (rightType == null)
+            {
+                rightType = typeof(void);
+            }
+
+            if (leftType != rightType)
+            {
+                throw new InvalidOperationException($"Invalid Type Assignment, attempting to assign {rightType.FullName} to {leftType.FullName}");
+            }
+        }
+
+
         private readonly Type[] delegateConstructorTypes = new Type[] { typeof(object), typeof(IntPtr) };
 
         public IReadOnlyList<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)> GenerateTypes(RootSyntaxNode typeRoot, ModuleBuilder moduleBuilder)

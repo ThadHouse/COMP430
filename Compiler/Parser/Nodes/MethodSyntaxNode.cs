@@ -10,9 +10,11 @@ namespace Compiler.Parser.Nodes
     {
         public bool IsStatic { get; }
 
+        public bool IsEntryPoint { get; }
+
         public string ReturnType { get; }
 
-        private IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
+        public IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
 
         public string Name { get; }
 
@@ -20,7 +22,7 @@ namespace Compiler.Parser.Nodes
 
         public ISyntaxNode Parent { get; }
 
-        public MethodSyntaxNode(ISyntaxNode parent, string returnType, string name, IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, bool isStatic, IReadOnlyList<StatementSyntaxNode> statements)
+        public MethodSyntaxNode(ISyntaxNode parent, string returnType, string name, IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, bool isStatic, bool isEntryPoint, IReadOnlyList<StatementSyntaxNode> statements)
         {
             Parent = parent;
             ReturnType = returnType;
@@ -28,6 +30,7 @@ namespace Compiler.Parser.Nodes
             Statements = statements;
             Name = name;
             IsStatic = isStatic;
+            IsEntryPoint = isEntryPoint;
         }
     }
 }

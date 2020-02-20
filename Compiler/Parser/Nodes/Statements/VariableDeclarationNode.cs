@@ -7,7 +7,7 @@ namespace Compiler.Parser.Nodes.Statements
 {
     public class VariableDeclarationNode : StatementSyntaxNode
     {
-        public string? Type { get; set; }
+        public string? Type { get; }
         public string Name { get; }
 
         public ExpressionSyntaxNode? Expression { get; }

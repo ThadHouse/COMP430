@@ -151,6 +151,7 @@ namespace Compiler.Parser
                         variableNode = new VariableSyntaxNode(parent, id.Name);
                         break;
                     default:
+                        tokens = prevTokens;
                         return null;
                 }
 
@@ -193,7 +194,7 @@ namespace Compiler.Parser
 
             if (!(tokens[1] is IdentifierToken nameToken))
             {
-                throw new InvalidTokenException("Name must be the 2nd token");
+                return null;
             }
 
             tokens = tokens.Slice(2);
@@ -248,6 +249,24 @@ namespace Compiler.Parser
             if (parsedVarDec != null)
             {
                 return parsedVarDec;
+            }
+
+            var beforeExpressionToken = tokens;
+
+            var parsedExpression = ParseExpression(ref tokens, parent, null);
+
+            if (parsedExpression != null)
+            {
+                if (tokens.Length < 1)
+                {
+                    throw new InvalidTokenException("There must be another token");
+                }
+                if (!(tokens[0] is SemiColonToken))
+                {
+                    throw new InvalidTokenException("Expected a semicolon");
+                }
+                tokens = tokens.Slice(1);
+                return parsedExpression;
             }
 
             while (!tokens.IsEmpty)
@@ -352,6 +371,8 @@ namespace Compiler.Parser
 
                             return new StatementSyntaxNode(parent, stmts);
                         }
+                    default:
+                        throw new InvalidTokenException("Unknown statement");
                 }
             }
 
@@ -507,10 +528,17 @@ namespace Compiler.Parser
             }
 
             bool isStatic = false;
+            bool isEntryPoint = false;
 
             if (tokens[0] is StaticToken)
             {
                 isStatic = true;
+                tokens = tokens.Slice(1);
+            }
+            else if (tokens[0] is EntryPointToken)
+            {
+                isStatic = true;
+                isEntryPoint = true;
                 tokens = tokens.Slice(1);
             }
 
@@ -539,7 +567,7 @@ namespace Compiler.Parser
 
             (var parameters, var statements) = ParseMethodLike(ref tokens, parent);
 
-            return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, statements);
+            return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, isEntryPoint, statements);
         }
 
         private static (IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, IReadOnlyList<StatementSyntaxNode> statements) ParseMethodLike(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
