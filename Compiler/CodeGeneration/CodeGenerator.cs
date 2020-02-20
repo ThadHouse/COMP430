@@ -60,8 +60,7 @@ namespace Compiler.CodeGeneration
 
                 if (field.Expression != null)
                 {
-                    fieldsToConstructInConstructor.Add(new ExpressionOpExpressionSyntaxNode(syntaxNode, new VariableSyntaxNode(syntaxNode, field.Name),
-                        new OperationSyntaxNode(syntaxNode, '='), field.Expression));
+                    fieldsToConstructInConstructor.Add(new ExpressionEqualsExpressionSyntaxNode(syntaxNode, new VariableSyntaxNode(syntaxNode, field.Name), field.Expression));
                 }
             }
 

@@ -6,7 +6,7 @@ using System.Reflection.Emit;
 using System.Text;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
-
+using Compiler.Tokenizer.Tokens;
 using static Compiler.TypeChecker.SimpleTypeChecker;
 
 namespace Compiler.CodeGeneration
@@ -216,26 +216,28 @@ namespace Compiler.CodeGeneration
 
                     }
                     break;
-                case ExpressionOpExpressionSyntaxNode expOpEx:
+                case ExpressionEqualsExpressionSyntaxNode expEqualsExp:
                     {
                         Type? leftType = null;
                         Type? rightType = null;
 
-                        if (expOpEx.Operation.Operation == '=')
-                        {
-                            if (expOpEx.Left is VariableSyntaxNode && !store.IsStatic)
+                            if (expEqualsExp.Left is VariableSyntaxNode && !store.IsStatic)
                             {
                                 generator.Emit(OpCodes.Ldarg_0);
                             }
 
-                            WriteExpression(generator, store, expOpEx.Right, true, ref rightType);
-                            WriteExpression(generator, store, expOpEx.Left, false, ref leftType);
+                            WriteExpression(generator, store, expEqualsExp.Right, true, ref rightType);
+                            WriteExpression(generator, store, expEqualsExp.Left, false, ref leftType);
                             TypeCheck(leftType, rightType);
 
 
 
                             return;
-                        }
+                    }
+                case ExpressionOpExpressionSyntaxNode expOpEx:
+                    {
+                        Type? leftType = null;
+                        Type? rightType = null;
 
                         WriteExpression(generator, store, expOpEx.Right, true, ref rightType);
                         WriteExpression(generator, store, expOpEx.Left, true, ref leftType);
@@ -243,24 +245,21 @@ namespace Compiler.CodeGeneration
 
                         switch (expOpEx.Operation.Operation)
                         {
-                            case '+':
+                            case SupportedOperation.Add:
                                 CheckCanArithmaticTypeOperations(leftType, rightType);
                                 generator.Emit(OpCodes.Add);
                                 break;
-                            case '-':
+                            case SupportedOperation.Subtract:
                                 CheckCanArithmaticTypeOperations(leftType, rightType);
                                 generator.Emit(OpCodes.Sub);
                                 break;
-                            case '*':
+                            case SupportedOperation.Multiply:
                                 CheckCanArithmaticTypeOperations(leftType, rightType);
                                 generator.Emit(OpCodes.Mul);
                                 break;
-                            case '/':
+                            case SupportedOperation.Divide:
                                 CheckCanArithmaticTypeOperations(leftType, rightType);
                                 generator.Emit(OpCodes.Div);
-                                break;
-                            case '=':
-                                // Do nothing, type checking was enough assuming expressions were in the right order
                                 break;
                             default:
                                 throw new InvalidOperationException("Unsupported operation");

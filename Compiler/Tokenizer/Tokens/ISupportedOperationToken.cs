@@ -6,6 +6,6 @@ namespace Compiler.Tokenizer.Tokens
 {
     public interface ISupportedOperationToken : ISingleCharToken
     {
-        char Operation { get; }
+        SupportedOperation Operation { get; }
     }
 }

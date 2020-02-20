@@ -39,6 +39,42 @@ namespace Compiler.Parser
 
                     return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, op.Operation), couldBeRight);
                 }
+                else if (curToken is EqualsToken)
+                {
+                    if (wouldBeLeft == null)
+                    {
+                        throw new InvalidTokenException("Left can't be null here");
+                    }
+
+                    // Check to see if next token is another equals. If so, its an ==
+                    if (tokens.IsEmpty)
+                    {
+                        throw new InvalidTokenException("There must be more tokens here");
+                    }
+                    if (tokens[0] is EqualsToken)
+                    {
+                        tokens = tokens.Slice(1);
+                        var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                        if (couldBeRight == null)
+                        {
+                            throw new InvalidTokenException("Right can't be null either");
+                        }
+
+                        return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, SupportedOperation.Equals), couldBeRight);
+                    }
+                    else
+                    {
+                        var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                        if (couldBeRight == null)
+                        {
+                            throw new InvalidTokenException("Right can't be null either");
+                        }
+
+                        return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
+                    }
+                }
                 else if (curToken is DotToken)
                 {
                     // Method call

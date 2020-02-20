@@ -4,10 +4,8 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class EqualsToken : ISupportedOperationToken
+    public class EqualsToken : ISingleCharToken
     {
         public const char CharValue = '=';
-
-        public char Operation => CharValue;
     }
 }

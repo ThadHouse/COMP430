@@ -8,6 +8,6 @@ namespace Compiler.Tokenizer.Tokens
     {
         public const char CharValue = '+';
 
-        public char Operation => CharValue;
+        public SupportedOperation Operation => SupportedOperation.Add;
     }
 }
