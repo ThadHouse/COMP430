@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using Compiler.Parser.Nodes;
+using Compiler.Parser.Nodes.Statements;
 
 namespace Compiler.CodeGeneration
 {
@@ -37,12 +38,14 @@ namespace Compiler.CodeGeneration
         }
 
         private (IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)> methods,
-            IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)> constructors)
+            IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)> constructors,
+            IReadOnlyList<FieldBuilder> fields)
             GenerateClassDefinitions(TypeBuilder type, ClassSyntaxNode syntaxNode, IReadOnlyDictionary<string, Type> legalTypes,
             ref MethodInfo? entryPoint)
         {
             var fields = new Dictionary<string, FieldBuilder>();
-            var fieldsToConstructInConstructor = new List<(FieldBuilder fieldBuilder, ExpressionSyntaxNode expression)>();
+            var fieldBuilders = new List<FieldBuilder>();
+            var fieldsToConstructInConstructor = new List<StatementSyntaxNode>();
 
             var toCompileMethodList = new List<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>();
             var toCompileConstructorsList = new List<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>();
@@ -51,13 +54,62 @@ namespace Compiler.CodeGeneration
             {
                 var fieldType = legalTypes[field.Type];
                 var fieldBuilder = type.DefineField(field.Name, fieldType, FieldAttributes.Public);
+                fieldBuilders.Add(fieldBuilder);
 
                 fields.Add(field.Name, fieldBuilder);
 
                 if (field.Expression != null)
                 {
-                    fieldsToConstructInConstructor.Add((fieldBuilder, field.Expression));
+                    fieldsToConstructInConstructor.Add(new ExpressionOpExpressionSyntaxNode(syntaxNode, new VariableSyntaxNode(syntaxNode, field.Name),
+                        new OperationSyntaxNode(syntaxNode, '='), field.Expression));
                 }
+            }
+
+            fieldsToConstructInConstructor.Add(new BaseClassConstructorSyntax(syntaxNode));
+
+            var constructorsToGenerate = new List<ConstructorSyntaxNode>();
+
+            if (syntaxNode.Constructors.Count == 0)
+            {
+                // Add a default constructor
+                constructorsToGenerate.Add(new ConstructorSyntaxNode(syntaxNode, Array.Empty<ParameterDefinitionSyntaxNode>(), fieldsToConstructInConstructor));
+            }
+            else
+            {
+                foreach (var cnode in syntaxNode.Constructors)
+                {
+                    var statements = new List<StatementSyntaxNode>(fieldsToConstructInConstructor);
+                    statements.AddRange(cnode.Statements);
+                    constructorsToGenerate.Add(new ConstructorSyntaxNode(syntaxNode, cnode.Parameters, statements));
+                }
+            }
+
+            foreach (var methodNode in constructorsToGenerate)
+            {
+                var parameters = methodNode.Parameters.Select(x =>
+                {
+                    var tpe = legalTypes[x.Type];
+                    if (x.IsRef)
+                    {
+                        tpe = tpe.MakeByRefType();
+                    }
+                    return tpe;
+                }).ToArray();
+
+                var method = type.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, parameters);
+
+                var parametersInfo = new Dictionary<string, int>();
+                var parameterTypes = new Dictionary<int, Type>();
+
+                for (int i = 0; i < methodNode.Parameters.Count; i++)
+                {
+                    var p = method.DefineParameter(i + 1, ParameterAttributes.None, methodNode.Parameters[i].Name);
+                    parametersInfo.Add(methodNode.Parameters[i].Name, i + 1);
+                    parameterTypes.Add(i + 1, parameters[i]);
+                }
+
+                var genStore = new GenerationStore(false, fields, parametersInfo, legalTypes, parameterTypes, null);
+                toCompileConstructorsList.Add((method, methodNode, genStore));
             }
 
             foreach (var methodNode in syntaxNode.Methods)
@@ -111,7 +163,7 @@ namespace Compiler.CodeGeneration
                 toCompileMethodList.Add((method, methodNode, genStore));
             }
 
-            return (toCompileMethodList, toCompileConstructorsList);
+            return (toCompileMethodList, toCompileConstructorsList, fieldBuilders);
         }
 
         private void GenerateMethods((MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store) data)
@@ -135,6 +187,23 @@ namespace Compiler.CodeGeneration
             }
         }
 
+        private void GenerateConstructors((ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store) data)
+        {
+            var generator = data.builder.GetILGenerator();
+
+            bool wasLastReturn = false;
+
+            foreach (var stmt in data.syntax.Statements)
+            {
+                wasLastReturn = ILGeneration.WriteStatement(generator, data.store, stmt);
+            }
+
+            if (!wasLastReturn)
+            {
+                generator.Emit(OpCodes.Ret);
+            }
+        }
+
         public MethodInfo? GenerateAssembly(IReadOnlyList<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)> types)
         {
             if (types == null)
@@ -153,19 +222,20 @@ namespace Compiler.CodeGeneration
 
             var toCompileMethods = new Dictionary<Type, IReadOnlyList<(MethodBuilder builder, MethodSyntaxNode syntax, GenerationStore store)>>();
             var toCompileConstructors = new Dictionary<Type, IReadOnlyList<(ConstructorBuilder builder, ConstructorSyntaxNode syntax, GenerationStore store)>>();
+            var toCompileFields = new Dictionary<Type, IReadOnlyList<FieldBuilder>>();
 
             foreach (var genTypes in types)
             {
                 if (genTypes.syntax is DelegateSyntaxNode delegateNode)
                 {
                     GenerateDelegateFunctions(genTypes.typeBuilder, delegateNode, legalTypes);
-                    genTypes.typeBuilder.CreateTypeInfo();
                 }
                 else if (genTypes.syntax is ClassSyntaxNode classNode)
                 {
                     var typeMethods = GenerateClassDefinitions(genTypes.typeBuilder, classNode, legalTypes, ref entryPoint);
                     toCompileMethods.Add(genTypes.typeBuilder, typeMethods.methods);
                     toCompileConstructors.Add(genTypes.typeBuilder, typeMethods.constructors);
+                    toCompileFields.Add(genTypes.typeBuilder, typeMethods.fields);
                 }
             }
 
@@ -175,9 +245,26 @@ namespace Compiler.CodeGeneration
                 {
                     methodToCompile.store.GettingCompiledTypes = toCompileMethods;
                     methodToCompile.store.GettingCompiledTypeConstructors = toCompileConstructors;
+                    methodToCompile.store.GettingCompiledFields = toCompileFields;
                     GenerateMethods(methodToCompile);
                 }
+            }
+
+            foreach (var typeToCompile in toCompileConstructors)
+            {
+                foreach (var methodToCompile in typeToCompile.Value)
+                {
+                    methodToCompile.store.GettingCompiledTypes = toCompileMethods;
+                    methodToCompile.store.GettingCompiledTypeConstructors = toCompileConstructors;
+                    methodToCompile.store.GettingCompiledFields = toCompileFields;
+                    GenerateConstructors(methodToCompile);
+                }
                 ((TypeBuilder)typeToCompile.Key).CreateTypeInfo();
+            }
+
+            foreach (var genTypes in types)
+            {
+                genTypes.typeBuilder.CreateTypeInfo();
             }
 
             return entryPoint;

@@ -58,16 +58,26 @@ namespace Compiler.Parser
                         throw new InvalidTokenException("Left can't be null");
                     }
 
-                    if (!(tokens[1] is LeftParenthesisToken))
+                    if (tokens[1] is LeftParenthesisToken)
                     {
-                        throw new InvalidTokenException("Expected left paranthesis");
+                        tokens = tokens.Slice(2);
+                        var parameters = ParseCallParameters(ref tokens, parent);
+                        return new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
+                    }
+                    else if (tokens[1] is DotToken)
+                    {
+                        tokens = tokens.Slice(1);
+                        return ParseExpression(ref tokens, parent, wouldBeLeft);
+                    }
+                    else if (tokens[1] is RightParenthesisToken)
+                    {
+                        tokens = tokens.Slice(1);
+                        return new VariableAccessExpression(parent, wouldBeLeft, id.Name);
                     }
 
-                    tokens = tokens.Slice(2);
 
-                    var parameters = ParseCallParameters(ref tokens, parent);
 
-                    return new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
+
                 }
 
                 if (wouldBeLeft != null)

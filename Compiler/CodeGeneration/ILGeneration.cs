@@ -17,6 +17,8 @@ namespace Compiler.CodeGeneration
         public IDictionary<string, LocalBuilder> Locals { get; } = new Dictionary<string, LocalBuilder>();
         public IReadOnlyDictionary<string, FieldBuilder> Fields { get; }
 
+        public IReadOnlyDictionary<Type, IReadOnlyList<FieldBuilder>>? GettingCompiledFields { get; set; }
+
         public IReadOnlyDictionary<string, int> Parameters { get; }
 
         public IReadOnlyDictionary<string, Type> AllowedTypes { get; }
@@ -27,11 +29,11 @@ namespace Compiler.CodeGeneration
 
         public IReadOnlyDictionary<int, Type> ParameterTypes { get; }
 
-        public Type ReturnType { get; }
+        public Type? ReturnType { get; }
 
         public GenerationStore(bool isStatic, IReadOnlyDictionary<string, FieldBuilder> fields,
             IReadOnlyDictionary<string, int> parameters, IReadOnlyDictionary<string, Type> allowedTypes,
-            IReadOnlyDictionary<int, Type> parameterTypes, Type returnType)
+            IReadOnlyDictionary<int, Type> parameterTypes, Type? returnType)
         {
             IsStatic = isStatic;
             Fields = fields;
@@ -93,6 +95,10 @@ namespace Compiler.CodeGeneration
                         generator.Emit(OpCodes.Pop);
                     }
                     break;
+                case BaseClassConstructorSyntax _:
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Call, typeof(object).GetConstructor(Array.Empty<Type>()));
+                    break;
                 default:
                     throw new NotSupportedException("This statement is not supported");
             }
@@ -143,6 +149,18 @@ namespace Compiler.CodeGeneration
                     generator.Emit(OpCodes.Ldstr, stringConstant.Value);
                     expressionResultType = typeof(string);
                     break;
+                case TrueConstantNode _:
+                    generator.Emit(OpCodes.Ldc_I4_1);
+                    expressionResultType = typeof(bool);
+                    break;
+                case FalseConstantNode _:
+                    generator.Emit(OpCodes.Ldc_I4_1);
+                    expressionResultType = typeof(bool);
+                    break;
+                case NullConstantNode _:
+                    generator.Emit(OpCodes.Ldnull);
+                    expressionResultType = null;
+                    break;
                 case VariableSyntaxNode varNode:
                     {
 
@@ -155,10 +173,11 @@ namespace Compiler.CodeGeneration
                             else
                             {
                                 generator.Emit(OpCodes.Stloc, localVar);
+                                generator.Emit(OpCodes.Pop);
                             }
                             expressionResultType = localVar.LocalType;
                         }
-                        else if (!store.Parameters.TryGetValue(varNode.Name, out var parameterVar))
+                        else if (store.Parameters.TryGetValue(varNode.Name, out var parameterVar))
                         {
                             if (isRight)
                             {
@@ -167,6 +186,7 @@ namespace Compiler.CodeGeneration
                             else
                             {
                                 generator.Emit(OpCodes.Starg, parameterVar);
+                                generator.Emit(OpCodes.Pop);
                             }
                             expressionResultType = store.ParameterTypes[parameterVar];
                         }
@@ -177,10 +197,9 @@ namespace Compiler.CodeGeneration
                                 throw new InvalidOperationException("Invalid to do this on static");
                             }
 
-                            generator.Emit(OpCodes.Ldarg_0);
-
                             if (isRight)
                             {
+                                generator.Emit(OpCodes.Ldarg_0);
                                 generator.Emit(OpCodes.Ldfld, fieldVar);
                             }
                             else
@@ -204,9 +223,17 @@ namespace Compiler.CodeGeneration
 
                         if (expOpEx.Operation.Operation == '=')
                         {
+                            if (expOpEx.Left is VariableSyntaxNode && !store.IsStatic)
+                            {
+                                generator.Emit(OpCodes.Ldarg_0);
+                            }
+
                             WriteExpression(generator, store, expOpEx.Right, true, ref rightType);
                             WriteExpression(generator, store, expOpEx.Left, false, ref leftType);
                             TypeCheck(leftType, rightType);
+
+
+
                             return;
                         }
 
@@ -312,9 +339,26 @@ namespace Compiler.CodeGeneration
                         }
                         else
                         {
-                            // Find the object getting called
+                            if (callTarget == typeof(int) || callTarget == typeof(bool))
+                            {
+                                // Special case int and bool because value type
+                                if (methodToCall.Name == "ToString" && methodToCall.GetParameters().Length == 0)
+                                {
+                                    // We know top of stack is our instance var
+                                    generator.Emit(OpCodes.Box, callTarget);
+                                    generator.EmitCall(OpCodes.Callvirt, typeof(object).GetMethod("ToString", Array.Empty<Type>()), null);
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Calling instance methods on struct types is not supported");
+                                }
+                            }
+                            else
+                            {
+                                generator.EmitCall(OpCodes.Callvirt, methodToCall, null);
+                            }
 
-                            generator.EmitCall(OpCodes.Callvirt, methodToCall, null);
+
                         }
                         expressionResultType = methodToCall.ReturnType;
                     }
@@ -363,63 +407,50 @@ namespace Compiler.CodeGeneration
                         }
                     }
                     break;
+                case VariableAccessExpression varAccess:
+                    {
+                        Type? callTarget = null;
+                        WriteExpression(generator, store, varAccess.Expression, true, ref callTarget);
+
+                        if (callTarget == null)
+                        {
+                            throw new InvalidOperationException("No target for field access");
+                        }
+
+                        FieldInfo? methodToCall = null;
+
+                        if (store.GettingCompiledFields!.TryGetValue(callTarget, out var localMethodList))
+                        {
+                            foreach (var localMethod in localMethodList)
+                            {
+                                if (localMethod.Name == varAccess.Name)
+                                {
+                                    methodToCall = localMethod;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+                            methodToCall = callTarget.GetField(varAccess.Name, bindingFlags);
+                        }
+
+                        if (methodToCall == null)
+                        {
+                            throw new InvalidOperationException("Field target not found");
+                        }
+
+                        generator.Emit(OpCodes.Ldfld, methodToCall);
+                        expressionResultType = methodToCall.FieldType;
+
+                        ;
+                    }
+                    break;
                 default:
                     throw new InvalidOperationException("Not implemented expression type");
             }
-
-            //if (expression is ExpressionOpExpressionSyntaxNode exp)
-            //{
-            //    //if (exp.Operation.Operation == '=')
-            //    //{
-            //    //    var left = exp.Left;
-            //    //    if (!(left is VariableSyntaxNode varNode))
-            //    //    {
-            //    //        throw new InvalidOperationException("Left must be a variable");
-            //    //    }
-
-            //    //    LocalBuilder? localVar;
-            //    //    FieldBuilder? fieldVar = null;
-
-            //    //    if (!store.Locals.TryGetValue(varNode.Name, out localVar ))
-            //    //    {
-            //    //        if (!store.Fields.TryGetValue(varNode.Name, out fieldVar))
-            //    //        {
-            //    //            throw new InvalidOperationException("Field or Local not found");
-            //    //        }
-            //    //    }
-
-            //    //    switch (exp.Right)
-            //    //    {
-            //    //        case IntConstantSyntaxNode intConstant:
-            //    //            generator.Emit(OpCodes.Ldc_I4, intConstant.Value);
-            //    //            break;
-            //    //        case StringConstantNode stringConstant:
-            //    //            generator.Emit(OpCodes.Ldstr, stringConstant.Value);
-            //    //            break;
-            //    //        default:
-            //    //            throw new NotSupportedException("This expression type is not supported yet");
-            //    //    }
-
-            //    //    if (localVar != null)
-            //    //    {
-            //    //        generator.Emit(OpCodes.Stloc, localVar);
-            //    //    }
-            //    //    else if (fieldVar != null)
-            //    //    {
-            //    //        if (store.IsStatic)
-            //    //        {
-            //    //            throw new InvalidOperationException("Cannot store field in static function");
-            //    //        }
-            //    //        generator.Emit(OpCodes.Ldarg_0);
-            //    //        generator.Emit(OpCodes.Stfld, fieldVar);
-            //    //    }
-            //    //}
-            //}
-            //else if (expression is IntConstantSyntaxNode)
-            //{
-
-            //}
-
         }
+
     }
 }

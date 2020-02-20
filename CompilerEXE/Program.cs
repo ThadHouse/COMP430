@@ -22,6 +22,10 @@ delegate void myFunc(int a, ref string b); delegate void otherfunc();
 
 class A::B::MyClass { 
     constructor() {
+        c = x.ToString();
+        System::Console.WriteLine(""In Constructor"");
+        x = x + 1;
+        System::Console.WriteLine(c);
     }
 
     method static int StaticMethod() {
@@ -33,6 +37,10 @@ class A::B::MyClass {
         System::Console.WriteLine(A::B::MyClass.StaticMethod());
         auto x = new object();
         System::Console.WriteLine(x.ToString());
+        auto y = new A::B::MyClass();
+        System::Console.WriteLine(y.val);
+        System::Console.WriteLine(y.c);
+        System::Console.WriteLine(y.x);
     }
 
     method int myMethod() { 
@@ -41,13 +49,13 @@ class A::B::MyClass {
         return a + 5;
     }
 
-    field int x = 5 + 3 + 6;
+    field int x = 5 + 3 + 7;
     field string val = ""hello""; 
-    field string c = x.ToString(); 
+    field string c; 
 } 
 
 class OtherClass { 
-    field string g = new string(42); 
+    field string g; 
 }
 ";
 
