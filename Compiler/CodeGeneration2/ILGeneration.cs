@@ -359,6 +359,13 @@ namespace Compiler.CodeGeneration2
                 throw new InvalidOperationException("Must have a target");
             }
 
+            if (callTarget.IsValueType)
+            {
+                var local = generator.DeclareLocal(callTarget);
+                generator.Emit(OpCodes.Stloc, local);
+                generator.Emit(OpCodes.Ldloca, local);
+            }
+
             var callParameterTypes = new List<Type>();
             foreach (var callParams in methodCall.Parameters)
             {
@@ -393,19 +400,9 @@ namespace Compiler.CodeGeneration2
             }
             else
             {
-                if (callTarget == typeof(int) || callTarget == typeof(bool))
+                if (callTarget.IsValueType)
                 {
-                    // Special case int and bool because value type
-                    if (methodToCall.Name == "ToString" && methodToCall.GetParameters().Length == 0)
-                    {
-                        // We know top of stack is our instance var
-                        generator.Emit(OpCodes.Box, callTarget);
-                        generator.EmitCall(OpCodes.Callvirt, typeof(object).GetMethod("ToString", Array.Empty<Type>()), null);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Calling instance methods on struct types is not supported");
-                    }
+                    generator.EmitCall(OpCodes.Call, methodToCall, null);
                 }
                 else
                 {
