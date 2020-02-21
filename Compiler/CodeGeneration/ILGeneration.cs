@@ -222,10 +222,7 @@ namespace Compiler.CodeGeneration
         public static void WriteExpression(ILGenerator generator, GenerationStore store, ExpressionSyntaxNode? expression, bool isRight,
       ref Type? expressionResultType)
         {
-            if (expression == null)
-            {
-                return;
-            }
+
 
             if (generator == null)
             {

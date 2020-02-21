@@ -30,7 +30,7 @@ class A::B::MyClass {
     }
 
     method static int StaticMethod() {
-        return """";
+        return 42;
     }
 
     method otherfunc getOtherFunc() {

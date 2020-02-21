@@ -12,6 +12,8 @@ namespace Compiler.CodeGeneration2
 {
     public class CodeGenerationStore
     {
+        public List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)> Delegates { get; } = new List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)>();
+
         public Dictionary<string, Type> Types { get; } = typeof(object).Assembly.GetTypes().ToDictionary(x => x.FullName);
         public Dictionary<Type, IReadOnlyList<FieldInfo>> Fields { get; } = new Dictionary<Type, IReadOnlyList<FieldInfo>>();
         public Dictionary<Type, IReadOnlyList<MethodInfo>> Methods { get; } = new Dictionary<Type, IReadOnlyList<MethodInfo>>();
@@ -25,6 +27,10 @@ namespace Compiler.CodeGeneration2
     {
         public Dictionary<TypeBuilder, ClassSyntaxNode> Classes { get; } = new Dictionary<TypeBuilder, ClassSyntaxNode>();
         public Dictionary<TypeBuilder, DelegateSyntaxNode> Delegates { get; } = new Dictionary<TypeBuilder, DelegateSyntaxNode>();
+
+        public Dictionary<MethodBuilder, MethodSyntaxNode> Methods { get; } = new Dictionary<MethodBuilder, MethodSyntaxNode>();
+
+        public Dictionary<ConstructorBuilder, ConstructorSyntaxNode> Constructors { get; } = new Dictionary<ConstructorBuilder, ConstructorSyntaxNode>();
     }
 
     public class NewCodeGenerator
@@ -121,6 +127,8 @@ namespace Compiler.CodeGeneration2
                 store.Methods.Add(type, new MethodInfo[] { method });
 
                 store.MethodParameters.Add(method, parameterTypes);
+
+                store.Delegates.Add((method.ReturnType, parameterTypes, type, constructor));
             }
         }
 
@@ -142,7 +150,8 @@ namespace Compiler.CodeGeneration2
             return initExpressions;
         }
 
-        private void GenerateClassMethods(TypeBuilder type, IList<MethodSyntaxNode> methods, CodeGenerationStore store, ref MethodInfo? entryPoint)
+        private void GenerateClassMethods(TypeBuilder type, IList<MethodSyntaxNode> methods, CodeGenerationStore store,
+            Dictionary<MethodBuilder, MethodSyntaxNode> methodsDictionary, ref MethodInfo? entryPoint)
         {
             var definedMethods = new List<MethodInfo>();
             store.Methods.Add(type, definedMethods);
@@ -181,6 +190,7 @@ namespace Compiler.CodeGeneration2
                 definedMethods.Add(definedMethod);
 
                 store.MethodParameters.Add(definedMethod, parameters);
+                methodsDictionary.Add(definedMethod, method);
 
                 int offset = 0;
                 if (method.IsStatic)
@@ -196,7 +206,8 @@ namespace Compiler.CodeGeneration2
         }
 
         private void GenerateClassConstructors(TypeBuilder type, IList<ConstructorSyntaxNode> constructors, CodeGenerationStore store,
-            IReadOnlyList<ExpressionEqualsExpressionSyntaxNode> fieldInitializers, ISyntaxNode parent)
+            IReadOnlyList<ExpressionEqualsExpressionSyntaxNode> fieldInitializers,
+            Dictionary<ConstructorBuilder, ConstructorSyntaxNode> constructorsDictionary, ISyntaxNode parent)
         {
             var definedConstructors = new List<ConstructorInfo>();
             store.Constructors.Add(type, definedConstructors);
@@ -237,6 +248,7 @@ namespace Compiler.CodeGeneration2
                 definedConstructors.Add(definedConstructor);
 
                 store.ConstructorParameters.Add(definedConstructor, parameters);
+                constructorsDictionary.Add(definedConstructor, constructor);
 
                 int offset = 0;
 
@@ -255,9 +267,88 @@ namespace Compiler.CodeGeneration2
                 var node = classToGenerate.Value;
                 var fieldsToInitialize = GenerateClassFields(classToGenerate.Key, node.Fields, store);
 
-                GenerateClassConstructors(type, node.Constructors, store, fieldsToInitialize, node);
+                GenerateClassConstructors(type, node.Constructors, store, fieldsToInitialize, toGenerate.Constructors, node);
 
-                GenerateClassMethods(type, node.Methods, store, ref entryPoint);
+                GenerateClassMethods(type, node.Methods, store, toGenerate.Methods, ref entryPoint);
+            }
+        }
+
+        private void GenerateMethod(ILGeneration generator, IReadOnlyList<StatementSyntaxNode> statements)
+        {
+            bool wasLastReturn = false;
+
+            foreach (var stmt in statements)
+            {
+                wasLastReturn = generator.WriteStatement(stmt);
+            }
+
+            if (!wasLastReturn)
+            {
+                generator.EmitRet();
+            }
+        }
+
+        private void GenerateMethods(GeneratedData toGenerate, CodeGenerationStore store)
+        {
+            foreach (var cls in toGenerate.Classes)
+            {
+                var type = cls.Key;
+                var node = cls.Value;
+
+                var fields = store.Fields[type].Select(x => (x, x.Name))
+                    .ToDictionary(x => x.Name, x => x.x);
+
+                foreach (MethodBuilder method in store.Methods[type])
+                {
+                    var generator = method.GetILGenerator();
+
+                    var parameters = toGenerate.Methods[method].Parameters
+                        .Select((p, i) => (i, store.Types[p.Type], p.Name))
+                        .ToDictionary(x => x.Name, x => (x.i, x.Item2));
+
+
+
+                    var methodInfo = new CurrentMethodInfo(type, method.ReturnType, method.IsStatic,
+                        parameters, fields);
+
+                    var generation = new ILGeneration(generator, store, methodInfo);
+
+
+
+                    GenerateMethod(generation, toGenerate.Methods[method].Statements);
+                }
+            }
+        }
+
+        private void GenerateConstructors(GeneratedData toGenerate, CodeGenerationStore store)
+        {
+            foreach (var cls in toGenerate.Classes)
+            {
+                var type = cls.Key;
+                var node = cls.Value;
+
+                var fields = store.Fields[type].Select(x => (x, x.Name))
+                    .ToDictionary(x => x.Name, x => x.x);
+
+                foreach (ConstructorBuilder constructor in store.Constructors[type])
+                {
+                    var generator = constructor.GetILGenerator();
+
+                    var parameters = toGenerate.Constructors[constructor].Parameters
+                        .Select((p, i) => (i, store.Types[p.Type], p.Name))
+                        .ToDictionary(x => x.Name, x => (x.i, x.Item2));
+
+
+
+                    var methodInfo = new CurrentMethodInfo(type, typeof(void), constructor.IsStatic,
+                        parameters, fields);
+
+                    var generation = new ILGeneration(generator, store, methodInfo);
+
+
+
+                    GenerateMethod(generation, (IReadOnlyList<StatementSyntaxNode>)toGenerate.Constructors[constructor].Statements);
+                }
             }
         }
 
@@ -284,6 +375,10 @@ namespace Compiler.CodeGeneration2
             MethodInfo? methodInfo = null;
 
             GenerateClassPlaceholders(toGenerate, store, ref methodInfo);
+
+            GenerateMethods(toGenerate, store);
+
+            GenerateConstructors(toGenerate, store);
 
             return methodInfo;
         }
