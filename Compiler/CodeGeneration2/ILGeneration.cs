@@ -6,7 +6,7 @@ using System.Reflection.Emit;
 using System.Text;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
-
+using Compiler.Tokenizer.Tokens;
 using static Compiler.TypeChecker.SimpleTypeChecker;
 
 namespace Compiler.CodeGeneration2
@@ -232,6 +232,270 @@ namespace Compiler.CodeGeneration2
             }
         }
 
+        private void HandleMethodReference(MethodReferenceExpression methodRef, ref Type? expressionResultType)
+        {
+            Type? callTarget = null;
+            WriteExpression(methodRef.Expression, true, ref callTarget);
+
+            if (callTarget == null)
+            {
+                throw new InvalidOperationException("Method ref target cannot be null");
+            }
+
+            foreach (var method in store.Methods![callTarget])
+            {
+                if (method.Name != methodRef.Name)
+                {
+                    continue;
+                }
+
+                if (method.IsStatic)
+                {
+                    throw new InvalidOperationException("Cannot grab an instance reference to a static delegate");
+                }
+
+                var parameters = store.MethodParameters[method];
+
+                Type? actionType = null;
+                ConstructorBuilder? constructor = null;
+
+                foreach (var del in store.Delegates)
+                {
+                    if (del.returnType == method.ReturnType
+                        && parameters.SequenceEqual(del.parameters))
+                    {
+                        actionType = del.type;
+                        constructor = del.constructor;
+                        break;
+                    }
+                }
+
+                if (actionType == null || constructor == null)
+                {
+                    throw new InvalidOperationException("Action type was not found");
+                }
+
+                // Object is already on stack
+                generator.Emit(OpCodes.Ldftn, method);
+                generator.Emit(OpCodes.Newobj, constructor);
+                expressionResultType = actionType;
+                return;
+                ;
+            }
+
+            throw new InvalidOperationException("Not supported");
+        }
+
+        private void HandleExpressionOpExpression(ExpressionOpExpressionSyntaxNode expOpEx, ref Type? expressionResultType)
+        {
+            Type? leftType = null;
+            Type? rightType = null;
+
+            WriteExpression(expOpEx.Right, true, ref rightType);
+            WriteExpression(expOpEx.Left, true, ref leftType);
+            TypeCheck(leftType, rightType);
+
+            switch (expOpEx.Operation.Operation)
+            {
+                case SupportedOperation.Add:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Add);
+                    break;
+                case SupportedOperation.Subtract:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Sub);
+                    break;
+                case SupportedOperation.Multiply:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Mul);
+                    break;
+                case SupportedOperation.Divide:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Div);
+                    break;
+                default:
+                    throw new InvalidOperationException("Unsupported operation");
+            }
+            expressionResultType = leftType;
+        }
+
+        private void HandleMethodCall(MethodCallExpression methodCall, ref Type? expressionResultType)
+        {
+            bool isStatic = true;
+            Type? callTarget = null;
+            if (methodCall.Expression is MethodCallExpression)
+            {
+                isStatic = false;
+                WriteExpression(methodCall.Expression, true, ref callTarget);
+            }
+
+            else if (methodCall.Expression is VariableSyntaxNode vdn)
+            {
+                if (!store.Types.TryGetValue(vdn.Name, out callTarget))
+                {
+                    isStatic = false;
+
+                    Type? rexpressionType = null;
+
+                    WriteExpression(vdn, true, ref rexpressionType);
+
+                    if (rexpressionType == null)
+                    {
+                        throw new InvalidOperationException("Target for call not found");
+                    }
+                    else
+                    {
+                        callTarget = rexpressionType;
+                    }
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("Op not suppored");
+            }
+
+            if (callTarget == null)
+            {
+                throw new InvalidOperationException("Must have a target");
+            }
+
+            var callParameterTypes = new List<Type>();
+            foreach (var callParams in methodCall.Parameters)
+            {
+                callParameterTypes.Add(WriteCallParameter(callParams));
+            }
+
+            MethodInfo? methodToCall = null;
+
+            if (store.Methods!.TryGetValue(callTarget, out var localMethodList))
+            {
+                foreach (var localMethod in localMethodList)
+                {
+                    if (localMethod.Name == methodCall.Name && (localMethod.IsStatic == isStatic))
+                    {
+                        var localMethodParameters = store.MethodParameters[localMethod];
+                        if (callParameterTypes.SequenceEqual(localMethodParameters))
+                        {
+                            methodToCall = localMethod;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (methodToCall == null)
+            {
+                throw new InvalidOperationException("Method not found");
+            }
+            if (isStatic)
+            {
+                generator.EmitCall(OpCodes.Call, methodToCall, null);
+            }
+            else
+            {
+                if (callTarget == typeof(int) || callTarget == typeof(bool))
+                {
+                    // Special case int and bool because value type
+                    if (methodToCall.Name == "ToString" && methodToCall.GetParameters().Length == 0)
+                    {
+                        // We know top of stack is our instance var
+                        generator.Emit(OpCodes.Box, callTarget);
+                        generator.EmitCall(OpCodes.Callvirt, typeof(object).GetMethod("ToString", Array.Empty<Type>()), null);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Calling instance methods on struct types is not supported");
+                    }
+                }
+                else
+                {
+                    generator.EmitCall(OpCodes.Callvirt, methodToCall, null);
+                }
+
+
+            }
+            expressionResultType = methodToCall.ReturnType;
+        }
+
+        private void HandleNewConstructor(NewConstructorExpression newConstructor, ref Type? expressionResultType)
+        {
+            if (store.Types.TryGetValue(newConstructor.Name, out var callTarget))
+            {
+                var callParameterTypes = new List<Type>();
+                // Calling a static function
+                foreach (var callParams in newConstructor.Parameters)
+                {
+                    callParameterTypes.Add(WriteCallParameter(callParams));
+                }
+
+                ConstructorInfo? methodToCall = null;
+
+                if (store.Constructors!.TryGetValue(callTarget, out var localConstructorList))
+                {
+                    foreach (var localMethod in localConstructorList)
+                    {
+                        var localMethodParameters = store.ConstructorParameters[localMethod];
+                        if (callParameterTypes.SequenceEqual(localMethodParameters))
+                        {
+                            methodToCall = localMethod;
+                            break;
+                        }
+                    }
+                }
+
+                if (methodToCall == null)
+                {
+                    throw new InvalidOperationException("Method not found");
+                }
+                generator.Emit(OpCodes.Newobj, methodToCall);
+                expressionResultType = callTarget;
+            }
+            else
+            {
+                throw new InvalidOperationException("Cannot construct this type");
+            }
+        }
+
+        private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref Type? expressionResultType)
+        {
+            Type? callTarget = null;
+            WriteExpression(varAccess.Expression, true, ref callTarget);
+
+            if (callTarget == null)
+            {
+                throw new InvalidOperationException("No target for field access");
+            }
+
+            FieldInfo? methodToCall = null;
+
+            if (store.Fields!.TryGetValue(callTarget, out var localMethodList))
+            {
+                foreach (var localMethod in localMethodList)
+                {
+                    if (localMethod.Name == varAccess.Name)
+                    {
+                        methodToCall = localMethod;
+                        break;
+                    }
+                }
+            }
+
+            if (methodToCall == null)
+            {
+                throw new InvalidOperationException("Field target not found");
+            }
+
+            if (isRight)
+            {
+                generator.Emit(OpCodes.Ldfld, methodToCall);
+            }
+            else
+            {
+                generator.Emit(OpCodes.Stfld, methodToCall);
+            }
+            expressionResultType = methodToCall.FieldType;
+        }
+
         private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight,
   ref Type? expressionResultType)
         {
@@ -266,6 +530,37 @@ namespace Compiler.CodeGeneration2
                     break;
                 case VariableSyntaxNode varNode:
                     HandleVariableExpression(varNode, isRight, ref expressionResultType);
+                    break;
+                case MethodReferenceExpression methodRef:
+                    if (!isRight)
+                    {
+                        throw new InvalidOperationException("Method ref must be on the right");
+                    }
+                    HandleMethodReference(methodRef, ref expressionResultType);
+                    break;
+                case ExpressionOpExpressionSyntaxNode expOpEx:
+                    if (!isRight)
+                    {
+                        throw new InvalidOperationException("Exp op Exp must be on the right");
+                    }
+                    HandleExpressionOpExpression(expOpEx, ref expressionResultType);
+                    break;
+                case MethodCallExpression methodCall:
+                    if (!isRight)
+                    {
+                        throw new InvalidOperationException("Method Call must be on the right");
+                    }
+                    HandleMethodCall(methodCall, ref expressionResultType);
+                    break;
+                case NewConstructorExpression newConstructor:
+                    if (!isRight)
+                    {
+                        throw new InvalidOperationException("New must be on the right");
+                    }
+                    HandleNewConstructor(newConstructor, ref expressionResultType);
+                    break;
+                case VariableAccessExpression varAccess:
+                    HandleVariableAccess(varAccess, isRight, ref expressionResultType);
                     break;
                 default:
                     throw new InvalidOperationException("Expression not supported");
@@ -319,7 +614,7 @@ namespace Compiler.CodeGeneration2
                     }
                     break;
                 case ExpressionSyntaxNode expStatement:
-                    WriteExpression(expStatement, false, ref expressionResultType);
+                    WriteExpression(expStatement, true, ref expressionResultType);
                     if (expressionResultType != null && expressionResultType != typeof(void))
                     {
                         throw new NotSupportedException("Stack must be emptied");

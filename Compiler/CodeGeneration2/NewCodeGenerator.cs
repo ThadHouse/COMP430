@@ -78,7 +78,7 @@ namespace Compiler.CodeGeneration2
 
             foreach (var node in rootNode.Classes)
             {
-                var type = module.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
+                var type = module.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
 
                 store.Types.Add(node.Name, type);
 
@@ -132,10 +132,11 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private IReadOnlyList<ExpressionEqualsExpressionSyntaxNode> GenerateClassFields(TypeBuilder type, IList<FieldSyntaxNode> fields, CodeGenerationStore store)
+        private IReadOnlyList<StatementSyntaxNode> GenerateClassFields(TypeBuilder type, IList<FieldSyntaxNode> fields, CodeGenerationStore store,
+            ISyntaxNode syntaxNode)
         {
             var definedFields = new List<FieldInfo>();
-            var initExpressions = new List<ExpressionEqualsExpressionSyntaxNode>();
+            var initExpressions = new List<StatementSyntaxNode>();
             store.Fields.Add(type, definedFields);
             foreach (var field in fields)
             {
@@ -146,6 +147,8 @@ namespace Compiler.CodeGeneration2
                     initExpressions.Add(new ExpressionEqualsExpressionSyntaxNode(field, new VariableSyntaxNode(field, field.Name), field.Expression));
                 }
             }
+
+            initExpressions.Add(new BaseClassConstructorSyntax(syntaxNode));
 
             return initExpressions;
         }
@@ -206,7 +209,7 @@ namespace Compiler.CodeGeneration2
         }
 
         private void GenerateClassConstructors(TypeBuilder type, IList<ConstructorSyntaxNode> constructors, CodeGenerationStore store,
-            IReadOnlyList<ExpressionEqualsExpressionSyntaxNode> fieldInitializers,
+            IReadOnlyList<StatementSyntaxNode> fieldInitializers,
             Dictionary<ConstructorBuilder, ConstructorSyntaxNode> constructorsDictionary, ISyntaxNode parent)
         {
             var definedConstructors = new List<ConstructorInfo>();
@@ -265,7 +268,7 @@ namespace Compiler.CodeGeneration2
             {
                 var type = classToGenerate.Key;
                 var node = classToGenerate.Value;
-                var fieldsToInitialize = GenerateClassFields(classToGenerate.Key, node.Fields, store);
+                var fieldsToInitialize = GenerateClassFields(classToGenerate.Key, node.Fields, store, node);
 
                 GenerateClassConstructors(type, node.Constructors, store, fieldsToInitialize, toGenerate.Constructors, node);
 
@@ -379,6 +382,14 @@ namespace Compiler.CodeGeneration2
             GenerateMethods(toGenerate, store);
 
             GenerateConstructors(toGenerate, store);
+
+            foreach (var type in store.Types.Values)
+            {
+                if (type is TypeBuilder tb)
+                {
+                    tb.CreateTypeInfo();
+                }
+            }
 
             return methodInfo;
         }
