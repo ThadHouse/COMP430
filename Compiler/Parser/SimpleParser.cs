@@ -301,7 +301,7 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Out of tokens?");
         }
 
-        private static StatementSyntaxNode? ParseStatements(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        private static StatementSyntaxNode? ParseStatement(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
             var parsedVarDec = ParseVariableDeclaration(ref tokens, parent);
 
@@ -311,11 +311,6 @@ namespace Compiler.Parser
             }
 
             var beforeExpressionToken = tokens;
-
-            if (tokens.Length == 298)
-            {
-                ;
-            }
 
             var parsedExpression = ParseExpression(ref tokens, parent, null);
 
@@ -412,12 +407,25 @@ namespace Compiler.Parser
                                 throw new InvalidTokenException("Must have a right paranthesis");
                             }
 
-                            if (!(tokens[0] is LeftBraceToken))
+                            if (!(tokens[1] is LeftBraceToken))
                             {
-                                throw new InvalidTokenException("Must have a left bracket");
+                                throw new InvalidTokenException("Must have a left brace");
                             }
 
-                            var stmt = ParseStatements(ref tokens, parent);
+                            tokens = tokens.Slice(2);
+
+                            var statements = new List<StatementSyntaxNode>();
+
+                            while (true)
+                            {
+                                var stmt = ParseStatement(ref tokens, parent);
+
+                                if (stmt == null)
+                                {
+                                    break;
+                                }
+                                statements.Add(stmt);
+                            }
 
                             if (tokens.Length < 1)
                             {
@@ -431,9 +439,9 @@ namespace Compiler.Parser
 
                             tokens = tokens.Slice(1);
 
-                            var stmts = stmt != null ? new StatementSyntaxNode[] { stmt } : Array.Empty<StatementSyntaxNode>();
+                            return new WhileStatement(parent, exp, statements);
 
-                            return new StatementSyntaxNode(parent, stmts);
+                            //return new StatementSyntaxNode(parent, stmts);
                         }
                     default:
                         throw new InvalidTokenException("Unknown statement");
@@ -654,7 +662,7 @@ namespace Compiler.Parser
 
             while (true)
             {
-                var stmt = ParseStatements(ref tokens, parent);
+                var stmt = ParseStatement(ref tokens, parent);
 
                 if (stmt == null)
                 {

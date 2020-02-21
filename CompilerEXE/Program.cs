@@ -22,7 +22,16 @@ namespace CompilerEXE
 delegate void myFunc(int a, string b); delegate void otherfunc(); 
 
 class Testing {
-    method static void MyMethod() {
+    method entrypoint void MyMethod() {
+        System::Console.WriteLine(5 - 3);
+        System::Console.WriteLine(""Calling My Method"");
+        int i = 10;
+        while (i != 5) {
+            System::Console.WriteLine(i.ToString());
+            i = i - 1;
+            
+        }
+
         return;
     }
 
@@ -71,7 +80,7 @@ class A::B::MyClass {
         del.Invoke();
     }
 
-    method entrypoint void Main() {
+    method static void Main() {
         System::Console.WriteLine(""Hello World!"");
         System::Console.WriteLine(A::B::MyClass.StaticMethod());
         auto x = new object();

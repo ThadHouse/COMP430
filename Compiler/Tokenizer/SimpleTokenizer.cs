@@ -54,6 +54,33 @@ namespace Compiler.Tokenizer
                 return new EqualsToken();
             }
 
+            if (token == '!')
+            {
+                if (nextToken != null && nextToken == '=')
+                {
+                    return new NotEqualsToken();
+                }
+                return new ExclamationPointToken();
+            }
+
+            if (token == '<')
+            {
+                if (nextToken != null && nextToken == '=')
+                {
+                    return new LessThenOrEqualToToken();
+                }
+                return new LeftArrowToken();
+            }
+
+            if (token == '>')
+            {
+                if (nextToken != null && nextToken == '=')
+                {
+                    return new GreaterThenOrEqualToToken();
+                }
+                return new RightArrowToken();
+            }
+
             return token switch
             {
                 '[' => new LeftBracketToken(),

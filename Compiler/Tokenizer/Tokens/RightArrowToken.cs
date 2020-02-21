@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class RightArrowToken : ISingleCharToken
+    public class RightArrowToken : ISupportedOperationToken, ISingleCharToken
     {
         public const char CharValue = '>';
+
+        public SupportedOperation Operation => SupportedOperation.GreaterThen;
     }
 }

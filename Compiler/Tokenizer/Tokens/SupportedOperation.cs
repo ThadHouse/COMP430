@@ -16,6 +16,7 @@ namespace Compiler.Tokenizer.Tokens
         LessThen,
         LessThenOrEqualTo,
         Or,
-        And
+        And,
+        NotEqual
     }
 }

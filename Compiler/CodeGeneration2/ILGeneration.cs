@@ -334,8 +334,8 @@ namespace Compiler.CodeGeneration2
             Type? leftType = null;
             Type? rightType = null;
 
-            WriteExpression(expOpEx.Right, true, false, ref rightType);
             WriteExpression(expOpEx.Left, true, false, ref leftType);
+            WriteExpression(expOpEx.Right, true, false, ref rightType);
             TypeCheck(leftType, rightType);
 
             switch (expOpEx.Operation.Operation)
@@ -356,6 +356,45 @@ namespace Compiler.CodeGeneration2
                     CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.Emit(OpCodes.Div);
                     break;
+                case SupportedOperation.LessThen:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Clt);
+                    expressionResultType = typeof(bool);
+                    return;
+                case SupportedOperation.GreaterThen:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Cgt);
+                    expressionResultType = typeof(bool);
+                    return;
+                case SupportedOperation.NotEqual:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Ceq);
+                    // This is how to invert a bool
+                    generator.Emit(OpCodes.Ldc_I4_0);
+                    generator.Emit(OpCodes.Ceq);
+                    expressionResultType = typeof(bool);
+                    return;
+                case SupportedOperation.Equals:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Ceq);
+                    expressionResultType = typeof(bool);
+                    return;
+                case SupportedOperation.LessThenOrEqualTo:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Cgt);
+                    // This is how to invert a bool
+                    generator.Emit(OpCodes.Ldc_I4_0);
+                    generator.Emit(OpCodes.Ceq);
+                    expressionResultType = typeof(bool);
+                    return;
+                case SupportedOperation.GreaterThenOrEqualTo:
+                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    generator.Emit(OpCodes.Clt);
+                    // This is how to invert a bool
+                    generator.Emit(OpCodes.Ldc_I4_0);
+                    generator.Emit(OpCodes.Ceq);
+                    expressionResultType = typeof(bool);
+                    return;
                 default:
                     throw new InvalidOperationException("Unsupported operation");
             }
@@ -599,6 +638,35 @@ namespace Compiler.CodeGeneration2
 
         }
 
+        private void HandleWhileStatement(WhileStatement statement)
+        {
+            // Make a top label
+
+            var topLabel = generator.DefineLabel();
+            var bottomLabel = generator.DefineLabel();
+
+            // Jump to our bottom label, mark top label after the jump
+            generator.Emit(OpCodes.Br, bottomLabel);
+            generator.MarkLabel(topLabel);
+
+            // Write our statements
+            foreach (var stmt in statement.Statements)
+            {
+                WriteStatement(stmt);
+            }
+
+            // mark bottom label after statments
+            generator.MarkLabel(bottomLabel);
+
+            Type? expressionResultType = null;
+            WriteExpression(statement.Expression, true, false, ref expressionResultType);
+            // Result of expression must be a bool
+            TypeCheck(typeof(bool), expressionResultType);
+            generator.Emit(OpCodes.Brtrue, topLabel);
+
+
+        }
+
         public bool WriteStatement(StatementSyntaxNode statement)
         {
             Type? expressionResultType = null;
@@ -659,6 +727,9 @@ namespace Compiler.CodeGeneration2
                 case BaseClassConstructorSyntax _:
                     generator.Emit(OpCodes.Ldarg_0);
                     generator.Emit(OpCodes.Call, typeof(object).GetConstructor(Array.Empty<Type>()));
+                    break;
+                case WhileStatement whileStatement:
+                    HandleWhileStatement(whileStatement);
                     break;
                 default:
                     throw new NotSupportedException("This statement is not supported");

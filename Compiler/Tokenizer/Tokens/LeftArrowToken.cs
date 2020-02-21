@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    public class LeftArrowToken : ISingleCharToken
+    public class LeftArrowToken : ISupportedOperationToken, ISingleCharToken
     {
         public const char CharValue = '<';
+
+        public SupportedOperation Operation => SupportedOperation.LessThen;
     }
 }
