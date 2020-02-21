@@ -303,11 +303,11 @@ namespace Compiler.CodeGeneration2
 
                 foreach (MethodBuilder method in store.Methods[type])
                 {
-                    var generator = method.GetILGenerator();
+                    var generator = new NetILGenerator(method.GetILGenerator());
 
                     var parameters = toGenerate.Methods[method].Parameters
                         .Select((p, i) => (i, store.Types[p.Type], p.Name))
-                        .ToDictionary(x => x.Name, x => (x.i, x.Item2));
+                        .ToDictionary(x => x.Name, x => ((short)x.i, x.Item2));
 
 
 
@@ -335,11 +335,11 @@ namespace Compiler.CodeGeneration2
 
                 foreach (ConstructorBuilder constructor in store.Constructors[type])
                 {
-                    var generator = constructor.GetILGenerator();
+                    var generator = new NetILGenerator(constructor.GetILGenerator());
 
                     var parameters = toGenerate.Constructors[constructor].Parameters
                         .Select((p, i) => (i, store.Types[p.Type], p.Name))
-                        .ToDictionary(x => x.Name, x => (x.i, x.Item2));
+                        .ToDictionary(x => x.Name, x => ((short)x.i, x.Item2));
 
 
 

@@ -32,6 +32,8 @@ namespace Compiler.Tokenizer
             "static",
             "return",
             "auto",
+            "if",
+            "else",
             "entrypoint",
             "constructor",
             "delegate",
@@ -148,6 +150,8 @@ namespace Compiler.Tokenizer
                 "new" => new NewToken(),
                 "newarr" => new NewArrToken(),
                 "while" => new WhileToken(),
+                "if" => new IfToken(),
+                "else" => new ElseToken(),
 
                 // Handle aliases
                 "int" => new AliasedIdentifierToken("System.Int32", tokenString),

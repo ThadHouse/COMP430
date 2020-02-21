@@ -376,6 +376,102 @@ namespace Compiler.Parser
                                 }
                             }, ref tokens);
                         }
+                    case IfToken _:
+                        {
+                            if (tokens.Length < 7)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+
+                            tokens = tokens.Slice(1);
+
+                            var exp = ParseExpression(ref tokens, parent, null);
+
+                            if (exp == null)
+                            {
+                                throw new InvalidTokenException("Must have an expression");
+                            }
+
+                            if (tokens.Length < 6)
+                            {
+                                throw new InvalidTokenException("Not enough tokens");
+                            }
+
+                            if (!(tokens[0] is RightParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Must have a right paranthesis");
+                            }
+
+                            if (!(tokens[1] is LeftBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a left brace");
+                            }
+
+                            tokens = tokens.Slice(2);
+
+                            var statements = new List<StatementSyntaxNode>();
+
+                            while (true)
+                            {
+                                var stmt = ParseStatement(ref tokens, parent);
+
+                                if (stmt == null)
+                                {
+                                    break;
+                                }
+                                statements.Add(stmt);
+                            }
+
+                            if (tokens.Length < 3)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+
+                            if (!(tokens[0] is RightBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a right brace");
+                            }
+
+                            if (!(tokens[1] is ElseToken))
+                            {
+                                throw new InvalidTokenException("Must have an else");
+                            }
+
+                            if (!(tokens[2] is LeftBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a left brace");
+                            }
+
+                            tokens = tokens.Slice(3);
+
+                            var elseStatements = new List<StatementSyntaxNode>();
+
+                            while (true)
+                            {
+                                var stmt = ParseStatement(ref tokens, parent);
+
+                                if (stmt == null)
+                                {
+                                    break;
+                                }
+                                elseStatements.Add(stmt);
+                            }
+
+                            if (tokens.Length < 1)
+                            {
+                                throw new InvalidTokenException("Must have tokens");
+                            }
+
+                            if (!(tokens[0] is RightBraceToken))
+                            {
+                                throw new InvalidTokenException("Must have a right brace");
+                            }
+
+                            tokens = tokens.Slice(1);
+
+                            return new IfElseStatement(parent, exp, statements, elseStatements);
+                        }
+
 
                     case WhileToken _:
                         {

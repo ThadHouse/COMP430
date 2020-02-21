@@ -23,12 +23,27 @@ delegate void myFunc(int a, string b); delegate void otherfunc();
 
 class Testing {
     method entrypoint void MyMethod() {
+        
+
         System::Console.WriteLine(5 - 3);
         System::Console.WriteLine(""Calling My Method"");
         int i = 10;
         while (i != 5) {
             System::Console.WriteLine(i.ToString());
             i = i - 1;
+            
+        }
+
+        if (i == 5) {
+            System::Console.WriteLine(""Truey"");
+        }
+        else {
+            if (i == 4) {
+                System::Console.WriteLine(""Else If"");
+            }   
+            else {
+                System::Console.WriteLine(""Falsy"");
+            }
             
         }
 

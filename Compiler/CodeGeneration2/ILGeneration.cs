@@ -23,12 +23,12 @@ namespace Compiler.CodeGeneration2
 
         public Dictionary<string, LocalBuilder> Locals { get; } = new Dictionary<string, LocalBuilder>();
 
-        public IReadOnlyDictionary<string, (int idx, Type type)> Parameters { get; }
+        public IReadOnlyDictionary<string, (short idx, Type type)> Parameters { get; }
 
         public IReadOnlyDictionary<string, FieldInfo> Fields { get; }
 
         public CurrentMethodInfo(Type type, Type returnType, bool isStatic,
-            IReadOnlyDictionary<string, (int idx, Type type)> parameters,
+            IReadOnlyDictionary<string, (short idx, Type type)> parameters,
             IReadOnlyDictionary<string, FieldInfo> fields)
         {
             Type = type;
@@ -42,15 +42,17 @@ namespace Compiler.CodeGeneration2
     public class ILGeneration
     {
         private readonly CodeGenerationStore store;
-        private readonly ILGenerator generator;
+        private readonly IILGenerator generator;
         private readonly CurrentMethodInfo currentMethodInfo;
 
-        public ILGeneration(ILGenerator generator, CodeGenerationStore store, CurrentMethodInfo currentMethodInfo)
+        public ILGeneration(IILGenerator generator, CodeGenerationStore store, CurrentMethodInfo currentMethodInfo)
         {
             this.generator = generator;
             this.store = store;
             this.currentMethodInfo = currentMethodInfo;
         }
+
+        // x = a + b
 
         private Action WriteLValueExpression(ExpressionSyntaxNode expression, out Type? expressionResultType)
         {
@@ -60,18 +62,21 @@ namespace Compiler.CodeGeneration2
                     if (currentMethodInfo.Locals.TryGetValue(varNode.Name, out var localVar))
                     {
                         expressionResultType = localVar.LocalType;
-                        return () => generator.Emit(OpCodes.Stloc, localVar);
+                        return () => generator.EmitStloc(localVar);
                     }
                     else if (currentMethodInfo.Parameters.TryGetValue(varNode.Name, out var parameterVar))
                     {
                         expressionResultType = parameterVar.type;
-                        return () => generator.Emit(OpCodes.Starg, parameterVar.idx);
+                        return () => generator.EmitStarg(parameterVar.idx);
                     }
                     else if (currentMethodInfo.Fields.TryGetValue(varNode.Name, out var fieldVar))
                     {
-                        generator.Emit(OpCodes.Ldarg_0);
+                        generator.EmitLdthis();
+
+
+
                         expressionResultType = fieldVar.FieldType;
-                        return () => generator.Emit(OpCodes.Stfld, fieldVar);
+                        return () => generator.EmitStfld(fieldVar);
                     }
                     else
                     {
@@ -107,7 +112,7 @@ namespace Compiler.CodeGeneration2
                         }
 
                         expressionResultType = fieldToCall.FieldType;
-                        return () => generator.Emit(OpCodes.Stfld, fieldToCall);
+                        return () => generator.EmitStfld(fieldToCall);
                     }
                 default:
                     throw new InvalidOperationException("No other type of operations supported as lvalue");
@@ -145,16 +150,16 @@ namespace Compiler.CodeGeneration2
                     {
                         if (willBeMethodCall && localVar.LocalType.IsValueType)
                         {
-                            generator.Emit(OpCodes.Ldloca, localVar);
+                            generator.EmitLdloca(localVar);
                         }
                         else
                         {
-                            generator.Emit(OpCodes.Ldloc, localVar);
+                            generator.EmitLdloc(localVar);
                         }
                     }
                     else
                     {
-                        generator.Emit(OpCodes.Stloc, localVar);
+                        generator.EmitStloc(localVar);
                     }
                     expressionResultType = localVar.LocalType;
                 }
@@ -164,16 +169,16 @@ namespace Compiler.CodeGeneration2
                     {
                         if (willBeMethodCall && parameterVar.type.IsValueType)
                         {
-                            generator.Emit(OpCodes.Ldarga, parameterVar.idx);
+                            generator.EmitLdarga(parameterVar.idx);
                         }
                         else
                         {
-                            generator.Emit(OpCodes.Ldarg, parameterVar.idx);
+                            generator.EmitLdarg(parameterVar.idx);
                         }
                     }
                     else
                     {
-                        generator.Emit(OpCodes.Starg, parameterVar.idx);
+                        generator.EmitStarg(parameterVar.idx);
                     }
                     expressionResultType = parameterVar.type;
                 }
@@ -186,21 +191,21 @@ namespace Compiler.CodeGeneration2
 
                     if (isRight)
                     {
-                        generator.Emit(OpCodes.Ldarg_0);
+                        generator.EmitLdthis();
                         if (willBeMethodCall && fieldVar.FieldType.IsValueType)
                         {
-                            generator.Emit(OpCodes.Ldflda, fieldVar);
+                            generator.EmitLdflda(fieldVar);
                         }
                         else
                         {
-                            generator.Emit(OpCodes.Ldfld, fieldVar);
+                            generator.EmitLdfld(fieldVar);
                         }
 
 
                     }
                     else
                     {
-                        generator.Emit(OpCodes.Stfld, fieldVar);
+                        generator.EmitStfld(fieldVar);
                     }
                     expressionResultType = fieldVar.FieldType;
                 }
@@ -249,14 +254,24 @@ namespace Compiler.CodeGeneration2
 
                         if (currentMethodInfo.IsStatic)
                         {
-                            generator.Emit(OpCodes.Ldnull);
+                            generator.EmitLdnull();
                         }
                         else
                         {
-                            generator.Emit(OpCodes.Ldarg_0);
+                            generator.EmitLdthis();
                         }
-                        generator.Emit(OpCodes.Ldftn, method);
-                        generator.Emit(OpCodes.Newobj, constructor);
+
+                        if (method.IsStatic)
+                        {
+                            generator.EmitLdftn(method);
+                        }
+                        else
+                        {
+                            generator.EmitDup();
+                            generator.EmitLdvirtftn(method);
+                        }
+
+                        generator.EmitNewobj(constructor);
                         return;
                         ;
                     }
@@ -320,8 +335,16 @@ namespace Compiler.CodeGeneration2
                     .First();
 
                 // Object is already on stack
-                generator.Emit(OpCodes.Ldftn, method);
-                generator.Emit(OpCodes.Newobj, constructor);
+                if (method.IsStatic)
+                {
+                    generator.EmitLdftn(method);
+                }
+                else
+                {
+                    generator.EmitDup();
+                    generator.EmitLdvirtftn(method);
+                }
+                generator.EmitNewobj(constructor);
                 return;
                 ;
             }
@@ -342,57 +365,57 @@ namespace Compiler.CodeGeneration2
             {
                 case SupportedOperation.Add:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Add);
+                    generator.EmitAdd();
                     break;
                 case SupportedOperation.Subtract:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Sub);
+                    generator.EmitSub();
                     break;
                 case SupportedOperation.Multiply:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Mul);
+                    generator.EmitMul();
                     break;
                 case SupportedOperation.Divide:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Div);
+                    generator.EmitDiv();
                     break;
                 case SupportedOperation.LessThen:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Clt);
+                    generator.EmitClt();
                     expressionResultType = typeof(bool);
                     return;
                 case SupportedOperation.GreaterThen:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Cgt);
+                    generator.EmitCgt();
                     expressionResultType = typeof(bool);
                     return;
                 case SupportedOperation.NotEqual:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Ceq);
+                    generator.EmitCeq();
                     // This is how to invert a bool
-                    generator.Emit(OpCodes.Ldc_I4_0);
-                    generator.Emit(OpCodes.Ceq);
+                    generator.EmitLdcI40();
+                    generator.EmitCeq();
                     expressionResultType = typeof(bool);
                     return;
                 case SupportedOperation.Equals:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Ceq);
+                    generator.EmitCeq();
                     expressionResultType = typeof(bool);
                     return;
                 case SupportedOperation.LessThenOrEqualTo:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Cgt);
+                    generator.EmitCgt();
                     // This is how to invert a bool
-                    generator.Emit(OpCodes.Ldc_I4_0);
-                    generator.Emit(OpCodes.Ceq);
+                    generator.EmitLdcI40();
+                    generator.EmitCeq();
                     expressionResultType = typeof(bool);
                     return;
                 case SupportedOperation.GreaterThenOrEqualTo:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
-                    generator.Emit(OpCodes.Clt);
+                    generator.EmitClt();
                     // This is how to invert a bool
-                    generator.Emit(OpCodes.Ldc_I4_0);
-                    generator.Emit(OpCodes.Ceq);
+                    generator.EmitLdcI40();
+                    generator.EmitCeq();
                     expressionResultType = typeof(bool);
                     return;
                 default:
@@ -471,17 +494,20 @@ namespace Compiler.CodeGeneration2
             }
             if (isStatic)
             {
-                generator.EmitCall(OpCodes.Call, methodToCall, null);
+                generator.EmitCall(methodToCall);
             }
             else
             {
                 if (callTarget.IsValueType)
                 {
-                    generator.EmitCall(OpCodes.Call, methodToCall, null);
+                    generator.EmitCall(methodToCall);
                 }
                 else
                 {
-                    generator.EmitCall(OpCodes.Callvirt, methodToCall, null);
+                    //generator.Emit(OpCodes.Ldvirtftn, methodToCall);
+                    //generator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, methodToCall.ReturnType, callParameterTypes.ToArray(), null);
+
+                    generator.EmitCallvirt(methodToCall);
                 }
 
 
@@ -519,7 +545,7 @@ namespace Compiler.CodeGeneration2
                 {
                     throw new InvalidOperationException("Method not found");
                 }
-                generator.Emit(OpCodes.Newobj, methodToCall);
+                generator.EmitNewobj(methodToCall);
                 expressionResultType = callTarget;
             }
             else
@@ -559,11 +585,11 @@ namespace Compiler.CodeGeneration2
 
             if (isRight)
             {
-                generator.Emit(OpCodes.Ldfld, methodToCall);
+                generator.EmitLdfld(methodToCall);
             }
             else
             {
-                generator.Emit(OpCodes.Stfld, methodToCall);
+                generator.EmitStfld(methodToCall);
             }
             expressionResultType = methodToCall.FieldType;
         }
@@ -578,23 +604,23 @@ namespace Compiler.CodeGeneration2
             switch (expression)
             {
                 case IntConstantSyntaxNode intConstant:
-                    generator.Emit(OpCodes.Ldc_I4, intConstant.Value);
+                    generator.EmitLdcI4(intConstant.Value);
                     expressionResultType = typeof(int);
                     break;
                 case StringConstantNode stringConstant:
-                    generator.Emit(OpCodes.Ldstr, stringConstant.Value);
+                    generator.EmitLdstr(stringConstant.Value);
                     expressionResultType = typeof(string);
                     break;
                 case TrueConstantNode _:
-                    generator.Emit(OpCodes.Ldc_I4_1);
+                    generator.EmitTrue();
                     expressionResultType = typeof(bool);
                     break;
                 case FalseConstantNode _:
-                    generator.Emit(OpCodes.Ldc_I4_1);
+                    generator.EmitFalse();
                     expressionResultType = typeof(bool);
                     break;
                 case NullConstantNode _:
-                    generator.Emit(OpCodes.Ldnull);
+                    generator.EmitLdnull();
                     expressionResultType = null;
                     break;
                 case VariableSyntaxNode varNode:
@@ -646,7 +672,7 @@ namespace Compiler.CodeGeneration2
             var bottomLabel = generator.DefineLabel();
 
             // Jump to our bottom label, mark top label after the jump
-            generator.Emit(OpCodes.Br, bottomLabel);
+            generator.EmitBr(bottomLabel);
             generator.MarkLabel(topLabel);
 
             // Write our statements
@@ -662,9 +688,38 @@ namespace Compiler.CodeGeneration2
             WriteExpression(statement.Expression, true, false, ref expressionResultType);
             // Result of expression must be a bool
             TypeCheck(typeof(bool), expressionResultType);
-            generator.Emit(OpCodes.Brtrue, topLabel);
+            generator.EmitBrtrue(topLabel);
 
 
+        }
+
+        private void HandleIfStatement(IfElseStatement statement)
+        {
+            var elseLabel = generator.DefineLabel();
+            var endLabel = generator.DefineLabel();
+
+            Type? expressionResultType = null;
+            WriteExpression(statement.Expression, true, false, ref expressionResultType);
+            // Result of expression must be a bool
+            TypeCheck(typeof(bool), expressionResultType);
+            generator.EmitBrfalse(elseLabel);
+
+            // Emit top statements
+            foreach (var stmt in statement.Statements)
+            {
+                WriteStatement(stmt);
+            }
+
+            generator.EmitBr(endLabel);
+
+            generator.MarkLabel(elseLabel);
+
+            foreach (var stmt in statement.ElseStatements)
+            {
+                WriteStatement(stmt);
+            }
+
+            generator.MarkLabel(endLabel);
         }
 
         public bool WriteStatement(StatementSyntaxNode statement)
@@ -677,7 +732,7 @@ namespace Compiler.CodeGeneration2
                     expressionResultType = currentMethodInfo.ReturnType;
                     WriteExpression(ret.Expression, true, false, ref expressionResultType);
                     TypeCheck(currentMethodInfo.ReturnType, expressionResultType);
-                    generator.Emit(OpCodes.Ret);
+                    generator.EmitRet();
                     return true;
                 case VariableDeclarationNode vardec:
                     {
@@ -702,7 +757,7 @@ namespace Compiler.CodeGeneration2
                         }
                         var loc = generator.DeclareLocal(store.Types[type]);
                         currentMethodInfo.Locals.Add(vardec.Name, loc);
-                        generator.Emit(OpCodes.Stloc, loc);
+                        generator.EmitStloc(loc);
                     }
                     break;
                 case ExpressionEqualsExpressionSyntaxNode expEqualsExp:
@@ -725,11 +780,14 @@ namespace Compiler.CodeGeneration2
                     }
                     break;
                 case BaseClassConstructorSyntax _:
-                    generator.Emit(OpCodes.Ldarg_0);
-                    generator.Emit(OpCodes.Call, typeof(object).GetConstructor(Array.Empty<Type>()));
+                    generator.EmitLdthis();
+                    generator.EmitConstructorCall(typeof(object).GetConstructor(Array.Empty<Type>()));
                     break;
                 case WhileStatement whileStatement:
                     HandleWhileStatement(whileStatement);
+                    break;
+                case IfElseStatement ifElseStatement:
+                    HandleIfStatement(ifElseStatement);
                     break;
                 default:
                     throw new NotSupportedException("This statement is not supported");
@@ -739,7 +797,7 @@ namespace Compiler.CodeGeneration2
 
         public void EmitRet()
         {
-            generator.Emit(OpCodes.Ret);
+            generator.EmitRet();
         }
     }
 }
