@@ -82,7 +82,7 @@ namespace Compiler.Parser
                         var methodExpression = new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
 
                         var continuingExpression = ParseExpression(ref tokens, parent, methodExpression);
-                        
+
                         if (continuingExpression != null)
                         {
                             return continuingExpression;
@@ -629,7 +629,7 @@ namespace Compiler.Parser
             return new MethodSyntaxNode(parent, typeToken.Name, nameToken.Name, parameters, isStatic, isEntryPoint, statements);
         }
 
-        private static (IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, IReadOnlyList<StatementSyntaxNode> statements) ParseMethodLike(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
+        private static (IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, List<StatementSyntaxNode> statements) ParseMethodLike(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
             var parameters = ParseParameters(ref tokens, parent);
 

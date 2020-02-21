@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using Compiler.CodeGeneration;
+using Compiler.CodeGeneration2;
 using Compiler.Parser;
 using Compiler.Tokenizer;
 using Compiler.TypeChecker;
@@ -15,7 +16,7 @@ namespace CompilerEXE
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
             var typeChecker = new SimpleTypeChecker();
-            var codeGenerator = new CodeGenerator();
+            var codeGenerator = new NewCodeGenerator();
 
             var code = @"
 delegate void myFunc(int a, string b); delegate void otherfunc(); 
@@ -82,9 +83,9 @@ class OtherClass {
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(assemblyName, assemblyName + ".exe");
 
-            var types = typeChecker.GenerateTypes(ast, createdModule);
+            //var types = typeChecker.GenerateTypes(ast, createdModule);
 
-            var entryPoint = codeGenerator.GenerateAssembly(types);
+            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule);
 
             if (entryPoint == null)
             {

@@ -11,11 +11,11 @@ namespace Compiler.Parser.Nodes
 
         public IReadOnlyList<ParameterDefinitionSyntaxNode> Parameters { get; }
 
-        public IReadOnlyList<StatementSyntaxNode> Statements { get; }
+        public IList<StatementSyntaxNode> Statements { get; }
 
         public ISyntaxNode Parent { get; }
 
-        public ConstructorSyntaxNode(ISyntaxNode parent, IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, IReadOnlyList<StatementSyntaxNode> statements)
+        public ConstructorSyntaxNode(ISyntaxNode parent, IReadOnlyList<ParameterDefinitionSyntaxNode> parameters, List<StatementSyntaxNode> statements)
         {
             Parent = parent;
             Parameters = parameters;
