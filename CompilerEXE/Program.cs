@@ -21,7 +21,23 @@ namespace CompilerEXE
             var code = @"
 delegate void myFunc(int a, string b); delegate void otherfunc(); 
 
+class Testing {
+    method static void MyMethod() {
+        return;
+    }
+
+    method static otherfunc GetOther() {
+        return MyMethod;
+    }
+}
+
 class A::B::MyClass { 
+    method static void callsTakesDelegate() {
+        otherfunc target = delegateTarget;
+        A::B::MyClass.takesDelegate(target);
+    }
+
+
     constructor() {
         c = x.ToString();
         System::Console.WriteLine(""In Constructor"");
@@ -37,8 +53,22 @@ class A::B::MyClass {
         return testFunc;
     }
 
+    method static otherfunc testMethodRef() {
+        auto a = new A::B::MyClass();
+        otherfunc b = a.testFunc;
+        return b;
+    }
+
     method void testFunc() {
         c = ""Called from an instance delegate"";
+    }
+
+    method static void delegateTarget() {
+        System::Console.WriteLine(""I am a delegate target"");
+    }
+
+    method static void takesDelegate(otherfunc del) {
+        del.Invoke();
     }
 
     method entrypoint void Main() {

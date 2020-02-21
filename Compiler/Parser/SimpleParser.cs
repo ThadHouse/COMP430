@@ -312,6 +312,11 @@ namespace Compiler.Parser
 
             var beforeExpressionToken = tokens;
 
+            if (tokens.Length == 298)
+            {
+                ;
+            }
+
             var parsedExpression = ParseExpression(ref tokens, parent, null);
 
             if (parsedExpression != null)

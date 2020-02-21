@@ -102,7 +102,7 @@ namespace Compiler.CodeGeneration2
 
                 store.Constructors.Add(type, new ConstructorInfo[] { constructor });
 
-                store.ConstructorParameters.Add(constructor, Array.Empty<Type>());
+                store.ConstructorParameters.Add(constructor, delegateConstructorTypes);
 
                 var parameterTypes = new Type[syntaxNode.Parameters.Count];
 
@@ -196,7 +196,7 @@ namespace Compiler.CodeGeneration2
                 methodsDictionary.Add(definedMethod, method);
 
                 int offset = 0;
-                if (method.IsStatic)
+                if (!method.IsStatic)
                 {
                     offset = 1;
                 }

@@ -19,6 +19,8 @@ namespace Compiler.CodeGeneration2
 
         public bool IsStatic { get; }
 
+        public Dictionary<Type, LocalBuilder> RefStoreLocals { get; } = new Dictionary<Type, LocalBuilder>();
+
         public Dictionary<string, LocalBuilder> Locals { get; } = new Dictionary<string, LocalBuilder>();
 
         public IReadOnlyDictionary<string, (int idx, Type type)> Parameters { get; }
@@ -78,7 +80,7 @@ namespace Compiler.CodeGeneration2
                 case VariableAccessExpression varAccess:
                     {
                         Type? callTarget = null;
-                        WriteExpression(varAccess.Expression, true, ref callTarget);
+                        WriteExpression(varAccess.Expression, true, false, ref callTarget);
 
                         if (callTarget == null)
                         {
@@ -120,7 +122,7 @@ namespace Compiler.CodeGeneration2
             }
 
             Type? expressionResultType = null;
-            WriteExpression(callNode.Expression, true, ref expressionResultType);
+            WriteExpression(callNode.Expression, true, false, ref expressionResultType);
             if (expressionResultType == null)
             {
                 throw new InvalidOperationException("Expression must return something here");
@@ -128,15 +130,27 @@ namespace Compiler.CodeGeneration2
             return expressionResultType;
         }
 
-        private void HandleVariableExpression(VariableSyntaxNode varNode, bool isRight, ref Type? expressionResultType)
+        private void HandleVariableExpression(VariableSyntaxNode varNode, bool isRight, bool willBeMethodCall, ref Type? expressionResultType)
         {
             {
+                if (!isRight && willBeMethodCall)
+                {
+                    throw new InvalidOperationException("Cannot have a method call on the left");
+                }
+
 
                 if (currentMethodInfo.Locals.TryGetValue(varNode.Name, out var localVar))
                 {
                     if (isRight)
                     {
-                        generator.Emit(OpCodes.Ldloc, localVar);
+                        if (willBeMethodCall && localVar.LocalType.IsValueType)
+                        {
+                            generator.Emit(OpCodes.Ldloca, localVar);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Ldloc, localVar);
+                        }
                     }
                     else
                     {
@@ -148,7 +162,14 @@ namespace Compiler.CodeGeneration2
                 {
                     if (isRight)
                     {
-                        generator.Emit(OpCodes.Ldarg, parameterVar.idx);
+                        if (willBeMethodCall && parameterVar.type.IsValueType)
+                        {
+                            generator.Emit(OpCodes.Ldarga, parameterVar.idx);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Ldarg, parameterVar.idx);
+                        }
                     }
                     else
                     {
@@ -166,7 +187,16 @@ namespace Compiler.CodeGeneration2
                     if (isRight)
                     {
                         generator.Emit(OpCodes.Ldarg_0);
-                        generator.Emit(OpCodes.Ldfld, fieldVar);
+                        if (willBeMethodCall && fieldVar.FieldType.IsValueType)
+                        {
+                            generator.Emit(OpCodes.Ldflda, fieldVar);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Ldfld, fieldVar);
+                        }
+
+
                     }
                     else
                     {
@@ -184,31 +214,38 @@ namespace Compiler.CodeGeneration2
                             continue;
                         }
 
+                        if (expressionResultType == null)
+                        {
+                            throw new InvalidOperationException("Expression result type cannot be null here");
+                        }
+
                         if (!method.IsStatic && currentMethodInfo.IsStatic)
                         {
                             throw new InvalidOperationException("Cannot grab a direct reference to a instance delegate");
                         }
 
-                        var parameters = store.MethodParameters[method];
-
-                        Type? actionType = null;
-                        ConstructorBuilder? constructor = null;
-
-                        foreach (var del in store.Delegates)
+                        if (expressionResultType.IsAssignableFrom(typeof(MulticastDelegate)))
                         {
-                            if (del.returnType == method.ReturnType
-                                && parameters.SequenceEqual(del.parameters))
-                            {
-                                actionType = del.type;
-                                constructor = del.constructor;
-                                break;
-                            }
+                            throw new InvalidOperationException("Target must be a delegate");
                         }
 
-                        if (actionType == null || constructor == null)
+                        var rightParameters = store.MethodParameters[method];
+                        var leftPossibleMethods = store.Methods[expressionResultType].Where(x => x.Name == "Invoke").ToArray();
+                        if (leftPossibleMethods.Length != 1)
                         {
-                            throw new InvalidOperationException("Action type was not found");
+                            throw new InvalidOperationException("Must only have 1 invoke method on a delegate");
                         }
+                        var leftParameters = store.MethodParameters[leftPossibleMethods[0]];
+
+                        if (!leftParameters.SequenceEqual(rightParameters))
+                        {
+                            throw new InvalidOperationException("Method and delegate types do not match");
+                        }
+
+                        // Find the constructor
+                        var constructor = store.Constructors[expressionResultType]
+                            .Where(x => store.ConstructorParameters[x].SequenceEqual(new Type[] { typeof(object), typeof(IntPtr) }))
+                            .First();
 
                         if (currentMethodInfo.IsStatic)
                         {
@@ -220,7 +257,6 @@ namespace Compiler.CodeGeneration2
                         }
                         generator.Emit(OpCodes.Ldftn, method);
                         generator.Emit(OpCodes.Newobj, constructor);
-                        expressionResultType = actionType;
                         return;
                         ;
                     }
@@ -235,7 +271,7 @@ namespace Compiler.CodeGeneration2
         private void HandleMethodReference(MethodReferenceExpression methodRef, ref Type? expressionResultType)
         {
             Type? callTarget = null;
-            WriteExpression(methodRef.Expression, true, ref callTarget);
+            WriteExpression(methodRef.Expression, true, false, ref callTarget);
 
             if (callTarget == null)
             {
@@ -249,36 +285,43 @@ namespace Compiler.CodeGeneration2
                     continue;
                 }
 
+                if (expressionResultType == null)
+                {
+                    throw new InvalidOperationException("Expression result type cannot be null here");
+                }
+
+                if (expressionResultType.IsAssignableFrom(typeof(MulticastDelegate)))
+                {
+                    throw new InvalidOperationException("Target must be a delegate");
+                }
+
+                var rightParameters = store.MethodParameters[method];
+                var leftPossibleMethods = store.Methods[expressionResultType].Where(x => x.Name == "Invoke").ToArray();
+                if (leftPossibleMethods.Length != 1)
+                {
+                    throw new InvalidOperationException("Must only have 1 invoke method on a delegate");
+                }
+                var leftParameters = store.MethodParameters[leftPossibleMethods[0]];
+
+                if (!leftParameters.SequenceEqual(rightParameters))
+                {
+                    throw new InvalidOperationException("Method and delegate types do not match");
+                }
+
+
                 if (method.IsStatic)
                 {
                     throw new InvalidOperationException("Cannot grab an instance reference to a static delegate");
                 }
 
-                var parameters = store.MethodParameters[method];
-
-                Type? actionType = null;
-                ConstructorBuilder? constructor = null;
-
-                foreach (var del in store.Delegates)
-                {
-                    if (del.returnType == method.ReturnType
-                        && parameters.SequenceEqual(del.parameters))
-                    {
-                        actionType = del.type;
-                        constructor = del.constructor;
-                        break;
-                    }
-                }
-
-                if (actionType == null || constructor == null)
-                {
-                    throw new InvalidOperationException("Action type was not found");
-                }
+                // Find the constructor
+                var constructor = store.Constructors[expressionResultType]
+                    .Where(x => store.ConstructorParameters[x].SequenceEqual(new Type[] { typeof(object), typeof(IntPtr) }))
+                    .First();
 
                 // Object is already on stack
                 generator.Emit(OpCodes.Ldftn, method);
                 generator.Emit(OpCodes.Newobj, constructor);
-                expressionResultType = actionType;
                 return;
                 ;
             }
@@ -291,8 +334,8 @@ namespace Compiler.CodeGeneration2
             Type? leftType = null;
             Type? rightType = null;
 
-            WriteExpression(expOpEx.Right, true, ref rightType);
-            WriteExpression(expOpEx.Left, true, ref leftType);
+            WriteExpression(expOpEx.Right, true, false, ref rightType);
+            WriteExpression(expOpEx.Left, true, false, ref leftType);
             TypeCheck(leftType, rightType);
 
             switch (expOpEx.Operation.Operation)
@@ -326,7 +369,7 @@ namespace Compiler.CodeGeneration2
             if (methodCall.Expression is MethodCallExpression)
             {
                 isStatic = false;
-                WriteExpression(methodCall.Expression, true, ref callTarget);
+                WriteExpression(methodCall.Expression, true, true, ref callTarget);
             }
 
             else if (methodCall.Expression is VariableSyntaxNode vdn)
@@ -337,7 +380,7 @@ namespace Compiler.CodeGeneration2
 
                     Type? rexpressionType = null;
 
-                    WriteExpression(vdn, true, ref rexpressionType);
+                    WriteExpression(vdn, true, true, ref rexpressionType);
 
                     if (rexpressionType == null)
                     {
@@ -357,13 +400,6 @@ namespace Compiler.CodeGeneration2
             if (callTarget == null)
             {
                 throw new InvalidOperationException("Must have a target");
-            }
-
-            if (callTarget.IsValueType)
-            {
-                var local = generator.DeclareLocal(callTarget);
-                generator.Emit(OpCodes.Stloc, local);
-                generator.Emit(OpCodes.Ldloca, local);
             }
 
             var callParameterTypes = new List<Type>();
@@ -456,7 +492,7 @@ namespace Compiler.CodeGeneration2
         private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref Type? expressionResultType)
         {
             Type? callTarget = null;
-            WriteExpression(varAccess.Expression, true, ref callTarget);
+            WriteExpression(varAccess.Expression, true, false, ref callTarget);
 
             if (callTarget == null)
             {
@@ -493,11 +529,8 @@ namespace Compiler.CodeGeneration2
             expressionResultType = methodToCall.FieldType;
         }
 
-        private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight,
-  ref Type? expressionResultType)
+        private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight, bool willBeMethodCall, ref Type? expressionResultType)
         {
-            GC.KeepAlive(expressionResultType);
-            GC.KeepAlive(isRight);
             if (expression == null)
             {
                 return;
@@ -526,7 +559,7 @@ namespace Compiler.CodeGeneration2
                     expressionResultType = null;
                     break;
                 case VariableSyntaxNode varNode:
-                    HandleVariableExpression(varNode, isRight, ref expressionResultType);
+                    HandleVariableExpression(varNode, isRight, willBeMethodCall, ref expressionResultType);
                     break;
                 case MethodReferenceExpression methodRef:
                     if (!isRight)
@@ -573,13 +606,19 @@ namespace Compiler.CodeGeneration2
             switch (statement)
             {
                 case ReturnStatementNode ret:
-                    WriteExpression(ret.Expression, true, ref expressionResultType);
+                    expressionResultType = currentMethodInfo.ReturnType;
+                    WriteExpression(ret.Expression, true, false, ref expressionResultType);
                     TypeCheck(currentMethodInfo.ReturnType, expressionResultType);
                     generator.Emit(OpCodes.Ret);
                     return true;
                 case VariableDeclarationNode vardec:
                     {
-                        WriteExpression(vardec.Expression, true, ref expressionResultType);
+                        if (vardec.Type != null)
+                        {
+                            expressionResultType = store.Types[vardec.Type];
+                        }
+
+                        WriteExpression(vardec.Expression, true, false, ref expressionResultType);
                         var type = vardec.Type;
                         if (type == null)
                         {
@@ -604,14 +643,14 @@ namespace Compiler.CodeGeneration2
 
                         var lastOp = WriteLValueExpression(expEqualsExp.Left, out var leftType);
 
-                        WriteExpression(expEqualsExp.Right, true, ref rightType);
+                        WriteExpression(expEqualsExp.Right, true, false, ref rightType);
                         TypeCheck(leftType, rightType);
 
                         lastOp();
                     }
                     break;
                 case ExpressionSyntaxNode expStatement:
-                    WriteExpression(expStatement, true, ref expressionResultType);
+                    WriteExpression(expStatement, true, false, ref expressionResultType);
                     if (expressionResultType != null && expressionResultType != typeof(void))
                     {
                         throw new NotSupportedException("Stack must be emptied");
