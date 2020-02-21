@@ -14,7 +14,7 @@ namespace Compiler.CodeGeneration2
     {
         public List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)> Delegates { get; } = new List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)>();
 
-        public Dictionary<string, Type> Types { get; } = typeof(object).Assembly.GetTypes().ToDictionary(x => x.FullName);
+        public Dictionary<string, Type> Types { get; } = new Dictionary<string, Type>();
         public Dictionary<Type, IReadOnlyList<FieldInfo>> Fields { get; } = new Dictionary<Type, IReadOnlyList<FieldInfo>>();
         public Dictionary<Type, IReadOnlyList<MethodInfo>> Methods { get; } = new Dictionary<Type, IReadOnlyList<MethodInfo>>();
         public Dictionary<MethodInfo, IReadOnlyList<Type>> MethodParameters { get; } = new Dictionary<MethodInfo, IReadOnlyList<Type>>();
@@ -37,28 +37,35 @@ namespace Compiler.CodeGeneration2
     {
         private readonly Type[] delegateConstructorTypes = new Type[] { typeof(object), typeof(IntPtr) };
 
-        private void WriteBCLTypes(CodeGenerationStore store)
+        private void WriteDependentTypes(CodeGenerationStore store, Assembly[] dependentAssemblies)
         {
-            foreach (var type in store.Types.Values)
+            foreach (var assembly in dependentAssemblies)
             {
-                store.Fields.Add(type, type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+                var types = assembly.GetTypes().Where(x => x.IsPublic);
 
-                var methodInfos = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-
-                store.Methods.Add(type, methodInfos);
-
-                foreach (var method in methodInfos)
+                foreach (var type in types)
                 {
-                    store.MethodParameters.Add(method, method.GetParameters().Select(x => x.ParameterType).ToArray());
-                }
 
-                var constructorInfos = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+                    store.Types.Add(type.FullName, type);
+                    store.Fields.Add(type, type.GetFields(BindingFlags.Public | BindingFlags.Instance));
 
-                store.Constructors.Add(type, constructorInfos);
+                    var methodInfos = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
-                foreach (var constructor in constructorInfos)
-                {
-                    store.ConstructorParameters.Add(constructor, constructor.GetParameters().Select(x => x.ParameterType).ToArray());
+                    store.Methods.Add(type, methodInfos);
+
+                    foreach (var method in methodInfos)
+                    {
+                        store.MethodParameters.Add(method, method.GetParameters().Select(x => x.ParameterType).ToArray());
+                    }
+
+                    var constructorInfos = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+
+                    store.Constructors.Add(type, constructorInfos);
+
+                    foreach (var constructor in constructorInfos)
+                    {
+                        store.ConstructorParameters.Add(constructor, constructor.GetParameters().Select(x => x.ParameterType).ToArray());
+                    }
                 }
             }
         }
@@ -355,7 +362,7 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        public MethodInfo? GenerateAssembly(RootSyntaxNode rootNode, ModuleBuilder module)
+        public MethodInfo? GenerateAssembly(RootSyntaxNode rootNode, ModuleBuilder module, Assembly[] dependentAssemblies)
         {
             if (rootNode == null)
             {
@@ -367,9 +374,14 @@ namespace Compiler.CodeGeneration2
                 throw new ArgumentNullException(nameof(module));
             }
 
+            if (dependentAssemblies == null)
+            {
+                throw new ArgumentNullException(nameof(dependentAssemblies));
+            }
+
             var store = new CodeGenerationStore();
 
-            WriteBCLTypes(store);
+            WriteDependentTypes(store, dependentAssemblies);
 
             var toGenerate = CreateTypesToGenerate(rootNode, module, store);
 

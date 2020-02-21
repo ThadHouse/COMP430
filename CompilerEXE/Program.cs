@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Compiler.CodeGeneration;
@@ -9,138 +13,73 @@ using Compiler.TypeChecker;
 
 namespace CompilerEXE
 {
-    class Program
+    public class Program
     {
-        static void Main()
+        static void Main(string? programName = null, string[]? args = null)
         {
+            var stopwatch = Stopwatch.StartNew();
+
+            if (args == null)
+            {
+                throw new InvalidOperationException("You must pass in a file");
+            }
+
+            var libraries = args.Where(x =>
+            {
+                var ext = Path.GetExtension(x);
+                return ext == ".exe" || ext == ".dll";
+            }).ToArray();
+
+            args = args.Except(libraries).ToArray();
+
+            if (args.Length == 0)
+            {
+                throw new InvalidOperationException("You must pass in a file to actually compile");
+            }
+
+#pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
+            Assembly[] assemblies = libraries.Select(x =>
+            {
+                try
+                {
+                    return Assembly.LoadFrom(x);
+                }
+#pragma warning disable CA1031 // Do not catch general exception types
+                catch
+#pragma warning restore CA1031 // Do not catch general exception types
+                {
+                    return null;
+                }
+            }).Where(x => x != null).Append(typeof(object).Assembly).ToArray();
+#pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
+
+            if (programName == null)
+            {
+                programName = Path.GetFileNameWithoutExtension(args[0]);
+            }
+
+            var tokens = new List<IToken>();
+
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
-            var typeChecker = new SimpleTypeChecker();
             var codeGenerator = new NewCodeGenerator();
 
-            var code = @"
-delegate void myFunc(int a, string b); delegate void otherfunc(); 
-
-class Testing {
-    method entrypoint void MyMethod() {
-        
-
-        System::Console.WriteLine(5 - 3);
-        System::Console.WriteLine(""Calling My Method"");
-        int i = 10;
-        while (i != 5) {
-            System::Console.WriteLine(i.ToString());
-            i = i - 1;
-            
-        }
-
-        if (i == 5) {
-            System::Console.WriteLine(""Truey"");
-        }
-        else {
-            if (i == 4) {
-                System::Console.WriteLine(""Else If"");
-            }   
-            else {
-                System::Console.WriteLine(""Falsy"");
+            foreach (var file in args)
+            {
+                var code = File.ReadAllText(file);
+                var fileTokens = tokenizer.EnumerateTokens(code.AsSpan());
+                foreach (var token in fileTokens)
+                {
+                    tokens.Add(token);
+                }
             }
-            
-        }
 
-        return;
-    }
+            var ast = parser.ParseTokens(tokens.ToArray());
 
-    method static otherfunc GetOther() {
-        return MyMethod;
-    }
-}
+            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
+            var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-class A::B::MyClass { 
-    method static void callsTakesDelegate() {
-        otherfunc target = delegateTarget;
-        A::B::MyClass.takesDelegate(target);
-    }
-
-
-    constructor() {
-        c = x.ToString();
-        System::Console.WriteLine(""In Constructor"");
-        x = x + 1;
-        System::Console.WriteLine(c);
-    }
-
-    method static int StaticMethod() {
-        return 42;
-    }
-
-    method otherfunc getOtherFunc() {
-        return testFunc;
-    }
-
-    method static otherfunc testMethodRef() {
-        auto a = new A::B::MyClass();
-        otherfunc b = a.testFunc;
-        return b;
-    }
-
-    method void testFunc() {
-        c = ""Called from an instance delegate"";
-    }
-
-    method static void delegateTarget() {
-        System::Console.WriteLine(""I am a delegate target"");
-    }
-
-    method static void takesDelegate(otherfunc del) {
-        del.Invoke();
-    }
-
-    method static void Main() {
-        System::Console.WriteLine(""Hello World!"");
-        System::Console.WriteLine(A::B::MyClass.StaticMethod());
-        auto x = new object();
-        System::Console.WriteLine(x.ToString());
-        auto y = new A::B::MyClass();
-        System::Console.WriteLine(y.val);
-        System::Console.WriteLine(y.c);
-        #System::Console.WriteLine(y.x);
-        #System::Console.WriteLine(""This should be commented out"");
-        y.other.g = ""I am setting another classes field"";
-        System::Console.WriteLine(y.other.g);
-        y.getOtherFunc().Invoke();
-        System::Console.WriteLine(y.c);
-    }
-
-    method int myMethod() { 
-        auto a = 42; 
-        a = a * 36;
-        return a + 5;
-    }
-
-     
-
-    field int x = 5 + 3 + 7;
-    field string val = ""hello""; 
-    field string c; 
-    field OtherClass other = new OtherClass();
-} 
-
-class OtherClass { 
-    field string g; 
-}
-";
-
-            var tokens = tokenizer.EnumerateTokens(code.AsSpan());
-
-            var ast = parser.ParseTokens(tokens);
-
-            string assemblyName = "HelloWorld";
-            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(assemblyName), AssemblyBuilderAccess.RunAndSave);
-            var createdModule = createdAssembly.DefineDynamicModule(assemblyName, assemblyName + ".exe");
-
-            //var types = typeChecker.GenerateTypes(ast, createdModule);
-
-            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule);
+            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule, assemblies);
 
             if (entryPoint == null)
             {
@@ -149,22 +88,11 @@ class OtherClass {
 
             createdAssembly.SetEntryPoint(entryPoint);
 
-            createdAssembly.Save("HelloWorld.exe");
+            createdAssembly.Save(programName + ".exe");
 
-            var createdAsm = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("MyApplication"), (AssemblyBuilderAccess)3); // 3 is run and save, not exposed in NETStandard
-            var module = createdAsm.DefineDynamicModule("MyModule");
+            stopwatch.Stop();
 
-            var programType = module.DefineType("Program", TypeAttributes.Public | TypeAttributes.Class);
-
-            var ctor = programType.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, null);
-            var il = ctor.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-
-            il.Emit(OpCodes.Call, typeof(object).GetConstructor(Array.Empty<Type>()));
-
-            il.Emit(OpCodes.Nop);
-            il.Emit(OpCodes.Ret);
-
+            Console.WriteLine($"Compilation took {stopwatch.Elapsed.TotalSeconds} Seconds");
         }
     }
 }

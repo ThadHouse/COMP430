@@ -6,11 +6,18 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.20104.2" />
     <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="System.Reflection.Emit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Program.net">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <PropertyGroup>

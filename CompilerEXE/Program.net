@@ -1,0 +1,113 @@
+﻿delegate void myFunc(int a, string b); 
+
+delegate void otherfunc(); 
+
+class Testing {
+    method entrypoint void MyMethod() {
+        auto token = new Compiler::Tokenizer::Tokens::WhileToken();
+
+        System::Console.WriteLine(token.ToString());
+
+        System::Console.WriteLine(5 - 3);
+        System::Console.WriteLine("Calling My Method");
+        int i = 10;
+        while (i != 5) {
+            System::Console.WriteLine(i.ToString());
+            i = i - 1;
+            
+        }
+
+        if (i == 5) {
+            System::Console.WriteLine("Truey");
+        }
+        else {
+            if (i == 4) {
+                System::Console.WriteLine("Else If");
+            }   
+            else {
+                System::Console.WriteLine("Falsy");
+            }
+            
+        }
+
+        return;
+    }
+
+    method static otherfunc GetOther() {
+        return MyMethod;
+    }
+}
+
+class A::B::MyClass { 
+    method static void callsTakesDelegate() {
+        otherfunc target = delegateTarget;
+        A::B::MyClass.takesDelegate(target);
+    }
+
+
+    constructor() {
+        c = x.ToString();
+        System::Console.WriteLine("In Constructor");
+        x = x + 1;
+        System::Console.WriteLine(c);
+    }
+
+    method static int StaticMethod() {
+        return 42;
+    }
+
+    method otherfunc getOtherFunc() {
+        return testFunc;
+    }
+
+    method static otherfunc testMethodRef() {
+        auto a = new A::B::MyClass();
+        otherfunc b = a.testFunc;
+        return b;
+    }
+
+    method void testFunc() {
+        c = "Called from an instance delegate";
+    }
+
+    method static void delegateTarget() {
+        System::Console.WriteLine("I am a delegate target");
+    }
+
+    method static void takesDelegate(otherfunc del) {
+        del.Invoke();
+    }
+
+    method static void Main() {
+        System::Console.WriteLine("Hello World!");
+        System::Console.WriteLine(A::B::MyClass.StaticMethod());
+        auto x = new object();
+        System::Console.WriteLine(x.ToString());
+        auto y = new A::B::MyClass();
+        System::Console.WriteLine(y.val);
+        System::Console.WriteLine(y.c);
+        #System::Console.WriteLine(y.x);
+        #System::Console.WriteLine("This should be commented out");
+        y.other.g = "I am setting another classes field";
+        System::Console.WriteLine(y.other.g);
+        y.getOtherFunc().Invoke();
+        System::Console.WriteLine(y.c);
+    }
+
+    method int myMethod() { 
+        auto a = 42; 
+        a = a * 36;
+        return a + 5;
+    }
+
+     
+
+    field int x = 5 + 3 + 7;
+    field string val = "hello"; 
+    field string c; 
+    field OtherClass other = new OtherClass();
+} 
+
+class OtherClass { 
+    field string g; 
+}

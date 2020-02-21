@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CompilerEXE": {
+      "commandName": "Project",
+      "commandLineArgs": "Program.net Compiler.dll"
+    }
+  }
+}
