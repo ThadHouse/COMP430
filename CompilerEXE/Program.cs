@@ -30,7 +30,7 @@ class A::B::MyClass {
     }
 
     method static int StaticMethod() {
-        return 42;
+        return """";
     }
 
     method otherfunc getOtherFunc() {
@@ -49,7 +49,8 @@ class A::B::MyClass {
         auto y = new A::B::MyClass();
         System::Console.WriteLine(y.val);
         System::Console.WriteLine(y.c);
-        System::Console.WriteLine(y.x);
+        #System::Console.WriteLine(y.x);
+        #System::Console.WriteLine(""This should be commented out"");
         y.other.g = ""I am setting another classes field"";
         System::Console.WriteLine(y.other.g);
         y.getOtherFunc().Invoke();

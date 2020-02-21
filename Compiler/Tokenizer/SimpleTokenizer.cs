@@ -317,6 +317,18 @@ namespace Compiler.Tokenizer
                     tokens.Add(new StringConstantToken(parsed));
                     i += toIncrement;
                 }
+                else if (currentChar == '#')
+                {
+                    // Comment
+                    while (i < input.Length)
+                    {
+                        if (input[i] == '\n')
+                        {
+                            break;
+                        }
+                        i++;
+                    }
+                }
                 else
                 {
                     throw new InvalidTokenParsingException(currentChar, currentToken);
