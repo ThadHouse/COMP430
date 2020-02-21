@@ -362,7 +362,8 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        public MethodInfo? GenerateAssembly(RootSyntaxNode rootNode, ModuleBuilder module, Assembly[] dependentAssemblies)
+        public MethodInfo? GenerateAssembly(RootSyntaxNode rootNode, ModuleBuilder module, Assembly[] dependentAssemblies,
+            Tracer tracer)
         {
             if (rootNode == null)
             {
@@ -379,21 +380,38 @@ namespace Compiler.CodeGeneration2
                 throw new ArgumentNullException(nameof(dependentAssemblies));
             }
 
+            if (tracer == null)
+            {
+                throw new ArgumentNullException(nameof(tracer));
+            }
+
             var store = new CodeGenerationStore();
 
             WriteDependentTypes(store, dependentAssemblies);
 
+            tracer.AddEpoch("Dependent Type Load");
+
             var toGenerate = CreateTypesToGenerate(rootNode, module, store);
 
+            tracer.AddEpoch("Generate Types");
+
             GenerateDelegates(toGenerate, store);
+
+            tracer.AddEpoch("Generate Delegates");
 
             MethodInfo? methodInfo = null;
 
             GenerateClassPlaceholders(toGenerate, store, ref methodInfo);
 
+            tracer.AddEpoch("Generate Class Definitions");
+
             GenerateMethods(toGenerate, store);
 
+            tracer.AddEpoch("Generate Class Methods");
+
             GenerateConstructors(toGenerate, store);
+
+            tracer.AddEpoch("Generate Class Constructors");
 
             foreach (var type in store.Types.Values)
             {
@@ -402,6 +420,8 @@ namespace Compiler.CodeGeneration2
                     tb.CreateTypeInfo();
                 }
             }
+
+            tracer.AddEpoch("Create Type Infos");
 
             return methodInfo;
         }

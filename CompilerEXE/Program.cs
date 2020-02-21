@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using Compiler;
 using Compiler.CodeGeneration;
 using Compiler.CodeGeneration2;
 using Compiler.Parser;
@@ -17,7 +18,8 @@ namespace CompilerEXE
     {
         static void Main(string? programName = null, string[]? args = null)
         {
-            var stopwatch = Stopwatch.StartNew();
+            var tracer = new Tracer();
+            tracer.Restart();
 
             if (args == null)
             {
@@ -58,6 +60,8 @@ namespace CompilerEXE
                 programName = Path.GetFileNameWithoutExtension(args[0]);
             }
 
+            tracer.AddEpoch("Initialization");
+
             var tokens = new List<IToken>();
 
             var tokenizer = new SimpleTokenizer();
@@ -74,12 +78,18 @@ namespace CompilerEXE
                 }
             }
 
+            tracer.AddEpoch("Tokenization");
+
             var ast = parser.ParseTokens(tokens.ToArray());
+
+            tracer.AddEpoch("Parsing");
 
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule, assemblies);
+            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule, assemblies, tracer);
+
+            tracer.AddEpoch("Code Generation");
 
             if (entryPoint == null)
             {
@@ -90,9 +100,7 @@ namespace CompilerEXE
 
             createdAssembly.Save(programName + ".exe");
 
-            stopwatch.Stop();
-
-            Console.WriteLine($"Compilation took {stopwatch.Elapsed.TotalSeconds} Seconds");
+            tracer.PrintEpochs();
         }
     }
 }
