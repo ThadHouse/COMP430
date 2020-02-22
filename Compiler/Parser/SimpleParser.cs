@@ -139,8 +139,8 @@ namespace Compiler.Parser
 
                 switch (curToken)
                 {
-                    case NumericConstantToken numericConstant:
-                        variableNode = new IntConstantSyntaxNode(parent, int.Parse(numericConstant.Value, CultureInfo.InvariantCulture));
+                    case IntegerConstantToken numericConstant:
+                        variableNode = new IntConstantSyntaxNode(parent, numericConstant.Value);
                         break;
                     case StringConstantToken stringConstant:
                         variableNode = new StringConstantNode(parent, stringConstant.Value);

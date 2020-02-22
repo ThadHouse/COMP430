@@ -91,7 +91,7 @@ abc@";
         public void TestTokenizerInvalidSingleCharTokenFails()
         {
             var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
-            Assert.Throws<InvalidTokenParsingException>(() => SimpleTokenizer.ParseSingleCharToken('c', null));
+            Assert.Throws<InvalidTokenParsingException>(() => SimpleTokenizer.ParseCharacterToken('c', null));
         }
     }
 }
