@@ -15,6 +15,29 @@ namespace Compiler.CodeGeneration2
         public List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)> Delegates { get; } = new List<(Type returnType, Type[] parameters, Type type, ConstructorBuilder constructor)>();
 
         public Dictionary<string, Type> Types { get; } = new Dictionary<string, Type>();
+
+        public Type TypeDefLookup(string value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            if (Types.TryGetValue(value, out var type))
+            {
+                return type;
+            }
+            if (value.EndsWith("[]", StringComparison.InvariantCultureIgnoreCase))
+            {
+                var subType = value.Substring(0, value.Length - 2);
+                type = Types[subType];
+                type = type.MakeArrayType();
+                Types.Add(value, type);
+                return type;
+            }
+            throw new KeyNotFoundException(nameof(value));
+        }
+
         public Dictionary<Type, IReadOnlyList<FieldInfo>> Fields { get; } = new Dictionary<Type, IReadOnlyList<FieldInfo>>();
         public Dictionary<Type, IReadOnlyList<MethodInfo>> Methods { get; } = new Dictionary<Type, IReadOnlyList<MethodInfo>>();
         public Dictionary<MethodInfo, IReadOnlyList<Type>> MethodParameters { get; } = new Dictionary<MethodInfo, IReadOnlyList<Type>>();
@@ -115,7 +138,7 @@ namespace Compiler.CodeGeneration2
 
                 for (int i = 0; i < parameterTypes.Length; i++)
                 {
-                    var paramType = store.Types[syntaxNode.Parameters[i].Type];
+                    var paramType = store.TypeDefLookup(syntaxNode.Parameters[i].Type);
                     if (syntaxNode.Parameters[i].IsRef)
                     {
                         throw new InvalidOperationException("Ref types are not supported");
@@ -123,7 +146,9 @@ namespace Compiler.CodeGeneration2
                     parameterTypes[i] = paramType;
                 }
 
-                var method = type.DefineMethod("Invoke", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.NewSlot, store.Types[syntaxNode.ReturnType], parameterTypes);
+                var returnType = store.TypeDefLookup(syntaxNode.ReturnType);
+
+                var method = type.DefineMethod("Invoke", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.NewSlot, returnType, parameterTypes);
                 method.SetImplementationFlags(MethodImplAttributes.Runtime);
 
                 for (int i = 0; i < parameterTypes.Length; i++)
@@ -147,7 +172,9 @@ namespace Compiler.CodeGeneration2
             store.Fields.Add(type, definedFields);
             foreach (var field in fields)
             {
-                var definedField = type.DefineField(field.Name, store.Types[field.Type], FieldAttributes.Public);
+                var fieldType = store.TypeDefLookup(field.Type);
+
+                var definedField = type.DefineField(field.Name, fieldType, FieldAttributes.Public);
                 definedFields.Add(definedField);
                 if (field.Expression != null)
                 {
@@ -176,15 +203,17 @@ namespace Compiler.CodeGeneration2
 
                 var parameters = method.Parameters.Select(x =>
                 {
-                    var tpe = store.Types[x.Type];
+                    var tpe = store.TypeDefLookup(x.Type);
                     if (x.IsRef)
                     {
-                        tpe = tpe.MakeByRefType();
+                        throw new InvalidOperationException("Ref types are not supported");
                     }
                     return tpe;
                 }).ToArray();
 
-                var returnType = store.Types[method.ReturnType];
+                var arrType = typeof(int[]);
+
+                var returnType = store.TypeDefLookup(method.ReturnType);
 
                 var definedMethod = type.DefineMethod(method.Name, methodAttributes, returnType, parameters);
 
@@ -245,10 +274,10 @@ namespace Compiler.CodeGeneration2
 
                 var parameters = constructor.Parameters.Select(x =>
                 {
-                    var tpe = store.Types[x.Type];
+                    var tpe = store.TypeDefLookup(x.Type);
                     if (x.IsRef)
                     {
-                        tpe = tpe.MakeByRefType();
+                        throw new InvalidOperationException("Ref types are not supported");
                     }
                     return tpe;
                 }).ToArray();

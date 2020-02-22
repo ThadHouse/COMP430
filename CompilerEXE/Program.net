@@ -5,6 +5,14 @@ delegate void otherfunc();
 delegate string strfunc();
 
 class Testing {
+    method static int[] createIntArray() {
+        int[] a = newarr int(32);
+        a[2] = 5;
+        int x = a[2];
+        System::Console.WriteLine(x);
+        return a;
+    }
+
     method entrypoint void MyMethod() {
         auto oth = Testing.GetStrFunc();
         System::Console.WriteLine(oth.Invoke());

@@ -83,5 +83,11 @@ namespace Compiler.CodeGeneration2
         LocalBuilder DeclareLocal(Type type);
 
         void EmitBox(Type type);
+
+        void EmitNewarr(Type type);
+
+        void EmitLdelem(Type type);
+
+        void EmitStelem(Type type);
     }
 }

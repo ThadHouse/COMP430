@@ -516,8 +516,6 @@ namespace Compiler.CodeGeneration2
                 }
                 else
                 {
-                    //generator.Emit(OpCodes.Ldvirtftn, methodToCall);
-                    //generator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, methodToCall.ReturnType, callParameterTypes.ToArray(), null);
 
                     generator.EmitCallvirt(methodToCall);
                 }
@@ -564,6 +562,28 @@ namespace Compiler.CodeGeneration2
             {
                 throw new InvalidOperationException("Cannot construct this type");
             }
+
+
+        }
+
+        private void HandleNewArray(NewArrExpression newConstructor, ref Type? expressionResultType)
+        {
+            if (store.Types.TryGetValue(newConstructor.Name, out var callTarget))
+            {
+                var arrayType = callTarget.MakeArrayType();
+
+                Type? sizeResultType = null;
+                WriteExpression(newConstructor.Expression, true, false, ref sizeResultType);
+                TypeCheck(typeof(int), sizeResultType);
+
+                generator.EmitNewarr(callTarget);
+
+                expressionResultType = arrayType;
+            }
+            else
+            {
+                throw new InvalidOperationException("Cannot construct this type");
+            }
         }
 
         private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref Type? expressionResultType)
@@ -604,6 +624,38 @@ namespace Compiler.CodeGeneration2
                 generator.EmitStfld(methodToCall);
             }
             expressionResultType = methodToCall.FieldType;
+        }
+
+        private void HandleArrayExpression(ArrayIndexExpression arrIdx, bool isRight, ref Type? expressionResultType)
+        {
+            Type? callTarget = null;
+            WriteExpression(arrIdx.Expression, true, false, ref callTarget);
+
+            if (callTarget == null)
+            {
+                throw new InvalidOperationException("No target for array access");
+            }
+
+            if (!callTarget.IsArray)
+            {
+                throw new InvalidOperationException("Target must be an array");
+            }
+
+            Type? lengthType = null;
+            WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
+
+            TypeCheck(typeof(int), lengthType);
+
+            expressionResultType = callTarget.GetMethod("Get").ReturnType;
+
+            if (isRight)
+            {
+                generator.EmitLdelem(expressionResultType);
+            }
+            else
+            {
+                generator.EmitStelem(expressionResultType);
+            }
         }
 
         private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight, bool willBeMethodCall, ref Type? expressionResultType)
@@ -668,6 +720,17 @@ namespace Compiler.CodeGeneration2
                     break;
                 case VariableAccessExpression varAccess:
                     HandleVariableAccess(varAccess, isRight, ref expressionResultType);
+                    break;
+
+                case NewArrExpression newArr:
+                    if (!isRight)
+                    {
+                        throw new InvalidOperationException("newarr must be on the right");
+                    }
+                    HandleNewArray(newArr, ref expressionResultType);
+                    break;
+                case ArrayIndexExpression arrIdx:
+                    HandleArrayExpression(arrIdx, isRight, ref expressionResultType);
                     break;
                 default:
                     throw new InvalidOperationException("Expression not supported");
@@ -750,7 +813,7 @@ namespace Compiler.CodeGeneration2
                     {
                         if (vardec.Type != null)
                         {
-                            expressionResultType = store.Types[vardec.Type];
+                            expressionResultType = store.TypeDefLookup(vardec.Type);
                         }
 
                         WriteExpression(vardec.Expression, true, false, ref expressionResultType);

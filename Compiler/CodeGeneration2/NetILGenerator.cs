@@ -116,6 +116,11 @@ namespace Compiler.CodeGeneration2
             generator.Emit(OpCodes.Ldc_I4_0);
         }
 
+        public void EmitLdelem(Type type)
+        {
+            generator.Emit(OpCodes.Ldelem, type);
+        }
+
         public void EmitLdfld(FieldInfo field)
         {
             generator.Emit(OpCodes.Ldfld, field);
@@ -166,6 +171,11 @@ namespace Compiler.CodeGeneration2
             generator.Emit(OpCodes.Mul);
         }
 
+        public void EmitNewarr(Type type)
+        {
+            generator.Emit(OpCodes.Newarr, type);
+        }
+
         public void EmitNewobj(ConstructorInfo constructor)
         {
             generator.Emit(OpCodes.Newobj, constructor);
@@ -186,6 +196,11 @@ namespace Compiler.CodeGeneration2
             {
                 generator.Emit(OpCodes.Starg, idx);
             }
+        }
+
+        public void EmitStelem(Type type)
+        {
+            generator.Emit(OpCodes.Stelem, type);
         }
 
         public void EmitStfld(FieldInfo field)

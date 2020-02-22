@@ -55,6 +55,40 @@ namespace Compiler.Parser
 
                     return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
                 }
+                else if (curToken is LeftBracketToken)
+                {
+                    if (tokens.Length < 2)
+                    {
+                        throw new InvalidTokenException("Not enough tokens left");
+                    }
+
+                    if (wouldBeLeft == null)
+                    {
+                        throw new InvalidTokenException("Left must not be null");
+                    }
+
+
+
+                    var exp = ParseExpression(ref tokens, parent, null);
+                    if (exp == null)
+                    {
+                        throw new InvalidTokenException("Must have an expression");
+                    }
+
+                    if (tokens.IsEmpty)
+                    {
+                        throw new InvalidTokenException("There must be a token");
+                    }
+
+                    if (!(tokens[0] is RightBracketToken))
+                    {
+                        throw new InvalidTokenException("Must be a right bracket");
+                    }
+
+                    tokens = tokens.Slice(1);
+
+                    return new ArrayIndexExpression(parent, wouldBeLeft, exp);
+                }
                 else if (curToken is DotToken)
                 {
                     // Method call or lots of fields
@@ -203,6 +237,17 @@ namespace Compiler.Parser
                                 throw new InvalidTokenException("Must have an expression for a newarr");
                             }
 
+                            if (tokens.Length < 1)
+                            {
+                                throw new InvalidTokenException("Need tokens to parse");
+                            }
+                            if (!(tokens[0] is RightParenthesisToken))
+                            {
+                                throw new InvalidTokenException("Next token must be a right paranthesis");
+                            }
+                            tokens = tokens.Slice(1);
+
+
                             variableNode = new NewArrExpression(parent, idToken.Name, expression);
                             break;
                         }
@@ -314,7 +359,7 @@ namespace Compiler.Parser
 
             var parsedExpression = ParseExpression(ref tokens, parent, null);
 
-            if (parsedExpression != null)
+            if (parsedExpression != null && (!(parsedExpression is ArrayIndexExpression)))
             {
                 if (tokens.Length < 1)
                 {
