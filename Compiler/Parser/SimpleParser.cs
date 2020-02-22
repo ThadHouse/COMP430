@@ -980,15 +980,11 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Out of tokens?");
         }
 
-        public RootSyntaxNode ParseTokens(ReadOnlySpan<IToken> tokens)
+        public void ParseTokens(ReadOnlySpan<IToken> tokens, RootSyntaxNode rootNode)
         {
-
-            var rootNode = new RootSyntaxNode();
-
-
-            if (tokens.Length == 0)
+            if (rootNode == null)
             {
-                return rootNode;
+                throw new ArgumentNullException(nameof(rootNode));
             }
 
             while (!tokens.IsEmpty)
@@ -1008,8 +1004,6 @@ namespace Compiler.Parser
                         throw new InvalidTokenException("Only expecting a delegate or a class");
                 }
             }
-
-            return rootNode;
         }
     }
 }

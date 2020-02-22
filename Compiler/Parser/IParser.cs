@@ -8,6 +8,6 @@ namespace Compiler.Parser
 {
     public interface IParser
     {
-        RootSyntaxNode ParseTokens(ReadOnlySpan<IToken> tokens);
+        void ParseTokens(ReadOnlySpan<IToken> tokens, RootSyntaxNode rootNode);
     }
 }

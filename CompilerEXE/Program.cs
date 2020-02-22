@@ -9,6 +9,7 @@ using Compiler;
 using Compiler.CodeGeneration;
 using Compiler.CodeGeneration2;
 using Compiler.Parser;
+using Compiler.Parser.Nodes;
 using Compiler.Tokenizer;
 using Compiler.TypeChecker;
 
@@ -62,7 +63,7 @@ namespace CompilerEXE
 
             tracer.AddEpoch("Initialization");
 
-            var tokens = new List<IToken>();
+            var rootNode = new RootSyntaxNode();
 
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
@@ -72,22 +73,15 @@ namespace CompilerEXE
             {
                 var code = File.ReadAllText(file);
                 var fileTokens = tokenizer.EnumerateTokens(code.AsSpan());
-                foreach (var token in fileTokens)
-                {
-                    tokens.Add(token);
-                }
+                tracer.AddEpoch($"Tokenizing {file}");
+                parser.ParseTokens(fileTokens, rootNode);
+                tracer.AddEpoch($"Parsing {file}");
             }
-
-            tracer.AddEpoch("Tokenization");
-
-            var ast = parser.ParseTokens(tokens.ToArray());
-
-            tracer.AddEpoch("Parsing");
 
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-            var entryPoint = codeGenerator.GenerateAssembly(ast, createdModule, assemblies, tracer);
+            var entryPoint = codeGenerator.GenerateAssembly(rootNode, createdModule, assemblies, tracer);
 
             tracer.AddEpoch("Code Generation");
 
