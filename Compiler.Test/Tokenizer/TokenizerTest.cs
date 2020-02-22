@@ -17,9 +17,7 @@ namespace Compiler.Test.Tokenizer
 @";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
-            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
-            Assert.Empty(tokenParsingException.CurrentlyParsedToken);
-            Assert.Equal('@', tokenParsingException.CauseCharacter);
+            Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
         [Fact]
@@ -29,9 +27,7 @@ namespace Compiler.Test.Tokenizer
 abc@";
 
             ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
-            var tokenParsingException = Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
-            Assert.Equal("abc", tokenParsingException.CurrentlyParsedToken);
-            Assert.Equal('@', tokenParsingException.CauseCharacter);
+            Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
         [Fact]

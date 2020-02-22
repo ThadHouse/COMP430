@@ -107,7 +107,7 @@ namespace Compiler.Tokenizer
                 '<' => new LeftArrowToken(),
                 '>' => new RightArrowToken(),
                 '*' => new StarToken(),
-                _ => throw new InvalidTokenParsingException(token, ReadOnlySpan<char>.Empty) // This should never be hit
+                _ => throw new InvalidTokenParsingException("Assertion here should never be hit") // This should never be hit
             };
         }
 
@@ -205,9 +205,7 @@ namespace Compiler.Tokenizer
         public static IToken ParseIdentifier(ref ReadOnlySpan<char> token)
         {
             var origString = token;
-            ReadOnlySpan<char> tokenRef = ReadOnlySpan<char>.Empty;
-
-            var check = !token.IsEmpty && (char.IsLetter(token[0]) || token[0] == '_' || token[0] == ':');
+            var tokenRef = ReadOnlySpan<char>.Empty;
 
             while (!token.IsEmpty && (char.IsLetter(token[0]) || token[0] == '_' || token[0] == ':'))
             {
@@ -219,7 +217,11 @@ namespace Compiler.Tokenizer
 
             if (tokenRef.IsEmpty)
             {
-                throw new InvalidOperationException("Empy token not supported");
+                if (token.Length == 0)
+                {
+                    throw new InvalidTokenParsingException("Error being out of characters here");
+                }
+                throw new InvalidTokenParsingException($"Invalid character {token[0]}");
             }
 
             return tokenString switch
@@ -252,36 +254,6 @@ namespace Compiler.Tokenizer
 
             };
         }
-
-        //// Parse an individual token
-        //public static IToken ParseToken(ReadOnlySpan<char> token, bool isReadingNumber)
-        //{
-        //    var tokenString = token.ToString();
-
-        //    if (isReadingNumber)
-        //    {
-        //        var slice = token;
-        //        if (token.StartsWith("0x".AsSpan(), StringComparison.InvariantCultureIgnoreCase))
-        //        {
-        //            slice = token.Slice(2);
-        //            if (slice.IsEmpty)
-        //            {
-        //                throw new InvalidNumericTokenException("Token cannot just be 0x");
-        //            }
-        //        }
-        //        foreach (var d in slice)
-        //        {
-        //            if (!char.IsDigit(d) && d != '.')
-        //            {
-        //                throw new InvalidNumericTokenException("Token must contain only numbers");
-        //            }
-        //        }
-        //        return new NumericConstantToken(tokenString);
-        //    }
-
-
-
-        //}
 
         private IToken? TryParseCharLiteral(ref ReadOnlySpan<char> input)
         {
@@ -319,7 +291,7 @@ namespace Compiler.Tokenizer
                 {
                     throw new CharacterConstantException("Odd ending character");
                 }
-                return (constChar, adj + 3);
+                return (constChar, adj + 4);
             }
             else if (input[i + 2] == '\'')
             {
@@ -388,13 +360,16 @@ namespace Compiler.Tokenizer
 
         public ReadOnlySpan<IToken> EnumerateTokens(ReadOnlySpan<char> input)
         {
-            // This is not going to be a fast tokenizer
-
-            List<string> tokenStrings = new List<string>();
             var tokens = new List<IToken>();
 
             while (!input.IsEmpty)
             {
+                if (char.IsWhiteSpace(input[0]))
+                {
+                    input = input.Slice(1);
+                    continue;
+                }
+
                 var potentialNumber = TryParseNumericToken(ref input);
                 if (potentialNumber != null)
                 {
@@ -423,12 +398,6 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
-                if (char.IsWhiteSpace(input[0]))
-                {
-                    input = input.Slice(1);
-                    continue;
-                }
-
                 if (input[0] == '#')
                 {
                     // Comment
@@ -445,126 +414,6 @@ namespace Compiler.Tokenizer
 
                 tokens.Add(ParseIdentifier(ref input));
             }
-
-            //bool isReadingNumber = false;
-
-            //for (int i = 0; i < input.Length; i++)
-            //{
-            //    var currentChar = input[i];
-
-            //    // Handle white space
-            //    if (char.IsWhiteSpace(currentChar))
-            //    {
-            //        if (currentToken.IsEmpty)
-            //        {
-            //            // If it's empty, do nothing
-            //            continue;
-            //        }
-
-            //        tokenStrings.Add(currentToken.ToString());
-            //        tokens.Add(ParseToken(currentToken, isReadingNumber));
-
-            //        currentToken = ReadOnlySpan<char>.Empty;
-            //        continue;
-            //    }
-
-            //    var tryParseNumber = TryParseNumericToken(input, )
-
-            //    if (AllowedSingleCharacters.Contains(currentChar))
-            //    {
-            //        // If a ., 
-            //        if (currentChar == '.' && !currentToken.IsEmpty && isReadingNumber)
-            //        {
-            //            if (hasReadADot)
-            //            {
-            //                throw new InvalidTokenParsingException(currentChar, currentToken);
-            //            }
-            //            else
-            //            {
-            //                hasReadADot = true;
-            //                currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
-            //                continue;
-            //            }
-            //        }
-
-            //        if (!currentToken.IsEmpty)
-            //        {
-            //            tokenStrings.Add(currentToken.ToString());
-            //            tokens.Add(ParseToken(currentToken, isReadingNumber));
-            //            currentToken = ReadOnlySpan<char>.Empty;
-            //            hasReadADot = false;
-            //        }
-
-            //        char? nextToken = null;
-            //        if (i < (input.Length - 1))
-            //        {
-            //            nextToken = input[i + 1];
-            //        }
-
-            //        var nextTokenToAdd = ParseCharacterToken(currentChar, nextToken);
-
-            //        if (nextTokenToAdd is IMultiCharOperationToken)
-            //        {
-            //            i++;
-            //        }
-
-            //        tokens.Add(nextTokenToAdd);
-            //    }
-            //    else if (char.IsLetterOrDigit(currentChar) || currentChar == '_' || currentChar == ':')
-            //    {
-            //        if (currentToken.IsEmpty)
-            //        {
-            //            isReadingNumber = char.IsDigit(currentChar);
-            //        }
-
-            //        // If its a digit or a letter, just add it to the current token
-            //        currentToken = input.Slice(i - currentToken.Length, currentToken.Length + 1);
-            //    }
-            //    else if (currentChar == '\'')
-            //    {
-
-            //        var (parsed, toIncrement) = ParseCharLiteral(input, i);
-            //        tokenStrings.Add(parsed.ToString(CultureInfo.InvariantCulture));
-            //        tokens.Add(new CharacterConstantToken(parsed));
-            //        i += toIncrement;
-
-
-            //        // Fast forward to find the end. There might be an escape character
-
-            //        // Next char
-
-            //    }
-            //    else if (currentChar == '"')
-            //    {
-            //        // Could be the start or end of a string constant
-            //        var (parsed, toIncrement) = ParseStringLiteral(input, i);
-            //        tokenStrings.Add(parsed.ToString(CultureInfo.InvariantCulture));
-            //        tokens.Add(new StringConstantToken(parsed));
-            //        i += toIncrement;
-            //    }
-            //    else if (currentChar == '#')
-            //    {
-            //        // Comment
-            //        while (i < input.Length)
-            //        {
-            //            if (input[i] == '\n')
-            //            {
-            //                break;
-            //            }
-            //            i++;
-            //        }
-            //    }
-            //    else
-            //    {
-            //        throw new InvalidTokenParsingException(currentChar, currentToken);
-            //    }
-            //}
-
-            //if (!currentToken.IsEmpty)
-            //{
-            //    tokenStrings.Add(currentToken.ToString());
-            //    tokens.Add(ParseToken(currentToken, isReadingNumber));
-            //}
 
             return tokens.ToArray();
         }
