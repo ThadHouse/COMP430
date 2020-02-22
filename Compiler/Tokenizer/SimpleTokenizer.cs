@@ -19,6 +19,7 @@ namespace Compiler.Tokenizer
         public static readonly string[] Aliases = new string[]
         {
             "int",
+            "double",
             "string",
             "bool",
             "object",
@@ -245,6 +246,7 @@ namespace Compiler.Tokenizer
 
                 // Handle aliases
                 "int" => new AliasedIdentifierToken("System.Int32", tokenString),
+                "double" => new AliasedIdentifierToken("System.Double", tokenString),
                 "string" => new AliasedIdentifierToken("System.String", tokenString),
                 "bool" => new AliasedIdentifierToken("System.Boolean", tokenString),
                 "object" => new AliasedIdentifierToken("System.Object", tokenString),
