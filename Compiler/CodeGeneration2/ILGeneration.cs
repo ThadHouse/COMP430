@@ -72,9 +72,6 @@ namespace Compiler.CodeGeneration2
                     else if (currentMethodInfo.Fields.TryGetValue(varNode.Name, out var fieldVar))
                     {
                         generator.EmitLdthis();
-
-
-
                         expressionResultType = fieldVar.FieldType;
                         return () => generator.EmitStfld(fieldVar);
                     }
@@ -247,6 +244,11 @@ namespace Compiler.CodeGeneration2
                             throw new InvalidOperationException("Method and delegate types do not match");
                         }
 
+                        if (method.ReturnType != leftPossibleMethods[0].ReturnType)
+                        {
+                            throw new InvalidOperationException("Method and delegate return types do not match");
+                        }
+
                         // Find the constructor
                         var constructor = store.Constructors[expressionResultType]
                             .Where(x => store.ConstructorParameters[x].SequenceEqual(new Type[] { typeof(object), typeof(IntPtr) }))
@@ -323,6 +325,11 @@ namespace Compiler.CodeGeneration2
                     throw new InvalidOperationException("Method and delegate types do not match");
                 }
 
+                if (method.ReturnType != leftPossibleMethods[0].ReturnType)
+                {
+                    throw new InvalidOperationException("Method and delegate return types do not match");
+                }
+
 
                 if (method.IsStatic)
                 {
@@ -341,6 +348,11 @@ namespace Compiler.CodeGeneration2
                 }
                 else
                 {
+                    if (callTarget.IsValueType)
+                    {
+                        generator.EmitBox(callTarget);
+                    }
+
                     generator.EmitDup();
                     generator.EmitLdvirtftn(method);
                 }

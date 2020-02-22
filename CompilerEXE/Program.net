@@ -2,8 +2,13 @@
 
 delegate void otherfunc(); 
 
+delegate string strfunc();
+
 class Testing {
     method entrypoint void MyMethod() {
+        auto oth = Testing.GetStrFunc();
+        System::Console.WriteLine(oth.Invoke());
+
         auto token = new Compiler::Tokenizer::Tokens::WhileToken();
 
         System::Console.WriteLine(token.ToString());
@@ -35,6 +40,11 @@ class Testing {
 
     method static otherfunc GetOther() {
         return MyMethod;
+    }
+
+    method static strfunc GetStrFunc() {
+        int a = 42;
+        return a.ToString;
     }
 }
 

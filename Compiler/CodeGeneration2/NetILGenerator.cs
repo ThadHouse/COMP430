@@ -30,6 +30,12 @@ namespace Compiler.CodeGeneration2
             generator.Emit(OpCodes.Add);
         }
 
+        public void EmitBox(Type type)
+        {
+
+            generator.Emit(OpCodes.Box, type);
+        }
+
         public void EmitBr(Label label)
         {
             generator.Emit(OpCodes.Br, label);
