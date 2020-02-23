@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using Compiler.CodeGeneration2.Builders;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
 using Compiler.Tokenizer.Tokens;
@@ -13,23 +14,23 @@ namespace Compiler.CodeGeneration2
 {
     public class CurrentMethodInfo
     {
-        public Type ReturnType { get; }
+        public IType ReturnType { get; }
 
-        public Type Type { get; }
+        public IType Type { get; }
 
         public bool IsStatic { get; }
 
-        public Dictionary<Type, LocalBuilder> RefStoreLocals { get; } = new Dictionary<Type, LocalBuilder>();
+        public Dictionary<IType, ILocalBuilder> RefStoreLocals { get; } = new Dictionary<IType, ILocalBuilder>();
 
-        public Dictionary<string, LocalBuilder> Locals { get; } = new Dictionary<string, LocalBuilder>();
+        public Dictionary<string, ILocalBuilder> Locals { get; } = new Dictionary<string, ILocalBuilder>();
 
-        public IReadOnlyDictionary<string, (short idx, Type type)> Parameters { get; }
+        public IReadOnlyDictionary<string, (short idx, IType type)> Parameters { get; }
 
-        public IReadOnlyDictionary<string, FieldInfo> Fields { get; }
+        public IReadOnlyDictionary<string, IFieldInfo> Fields { get; }
 
-        public CurrentMethodInfo(Type type, Type returnType, bool isStatic,
-            IReadOnlyDictionary<string, (short idx, Type type)> parameters,
-            IReadOnlyDictionary<string, FieldInfo> fields)
+        public CurrentMethodInfo(IType type, IType returnType, bool isStatic,
+            IReadOnlyDictionary<string, (short idx, IType type)> parameters,
+            IReadOnlyDictionary<string, IFieldInfo> fields)
         {
             Type = type;
             ReturnType = returnType;
@@ -44,28 +45,33 @@ namespace Compiler.CodeGeneration2
         private readonly CodeGenerationStore store;
         private readonly IILGenerator generator;
         private readonly CurrentMethodInfo currentMethodInfo;
+        private readonly IType[] delegateConstructorTypes;
+        private readonly IConstructorInfo baseConstructorCall;
 
-        public ILGeneration(IILGenerator generator, CodeGenerationStore store, CurrentMethodInfo currentMethodInfo)
+        public ILGeneration(IILGenerator generator, CodeGenerationStore store, CurrentMethodInfo currentMethodInfo,
+            IType[] delegateConstructorTypes, IConstructorInfo baseConstructorCall)
         {
             this.generator = generator;
             this.store = store;
             this.currentMethodInfo = currentMethodInfo;
+            this.delegateConstructorTypes = delegateConstructorTypes;
+            this.baseConstructorCall = baseConstructorCall;
         }
 
         // x = a + b
 
-        private Action WriteLValueExpression(ExpressionSyntaxNode expression, out Type? expressionResultType)
+        private Action WriteLValueExpression(ExpressionSyntaxNode expression, out IType? expressionResultType)
         {
             switch (expression)
             {
                 case ArrayIndexExpression arrIdx:
-                    Type? arrayType = null;
-                    Type? lengthType = null;
+                    IType? arrayType = null;
+                    IType? lengthType = null;
 
                     WriteExpression(arrIdx.Expression, true, false, ref arrayType);
                     WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
 
-                    TypeCheck(typeof(int), lengthType);
+                    TypeCheck(store.Types["System.Int32"], lengthType);
 
                     if (arrayType == null)
                     {
@@ -101,7 +107,7 @@ namespace Compiler.CodeGeneration2
                     }
                 case VariableAccessExpression varAccess:
                     {
-                        Type? callTarget = null;
+                        IType? callTarget = null;
                         WriteExpression(varAccess.Expression, true, false, ref callTarget);
 
                         if (callTarget == null)
@@ -109,7 +115,7 @@ namespace Compiler.CodeGeneration2
                             throw new InvalidOperationException("No target for field access");
                         }
 
-                        FieldInfo? fieldToCall = null;
+                        IFieldInfo? fieldToCall = null;
 
                         if (store.Fields.TryGetValue(callTarget, out var typeFieldList))
                         {
@@ -136,14 +142,14 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private Type WriteCallParameter(CallParameterSyntaxNode callNode)
+        private IType WriteCallParameter(CallParameterSyntaxNode callNode)
         {
             if (callNode == null)
             {
                 throw new ArgumentNullException(nameof(callNode));
             }
 
-            Type? expressionResultType = null;
+            IType? expressionResultType = null;
             WriteExpression(callNode.Expression, true, false, ref expressionResultType);
             if (expressionResultType == null)
             {
@@ -152,7 +158,7 @@ namespace Compiler.CodeGeneration2
             return expressionResultType;
         }
 
-        private void HandleVariableExpression(VariableSyntaxNode varNode, bool isRight, bool willBeMethodCall, ref Type? expressionResultType)
+        private void HandleVariableExpression(VariableSyntaxNode varNode, bool isRight, bool willBeMethodCall, ref IType? expressionResultType)
         {
             {
                 if (!isRight && willBeMethodCall)
@@ -246,7 +252,7 @@ namespace Compiler.CodeGeneration2
                             throw new InvalidOperationException("Cannot grab a direct reference to a instance delegate");
                         }
 
-                        if (expressionResultType.IsAssignableFrom(typeof(MulticastDelegate)))
+                        if (expressionResultType.IsAssignableFrom(store.Types["System.MulticastDelegate"]))
                         {
                             throw new InvalidOperationException("Target must be a delegate");
                         }
@@ -271,7 +277,7 @@ namespace Compiler.CodeGeneration2
 
                         // Find the constructor
                         var constructor = store.Constructors[expressionResultType]
-                            .Where(x => store.ConstructorParameters[x].SequenceEqual(new Type[] { typeof(object), typeof(IntPtr) }))
+                            .Where(x => store.ConstructorParameters[x].SequenceEqual(delegateConstructorTypes))
                             .First();
 
                         if (currentMethodInfo.IsStatic)
@@ -305,9 +311,9 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private void HandleMethodReference(MethodReferenceExpression methodRef, ref Type? expressionResultType)
+        private void HandleMethodReference(MethodReferenceExpression methodRef, ref IType? expressionResultType)
         {
-            Type? callTarget = null;
+            IType? callTarget = null;
             WriteExpression(methodRef.Expression, true, false, ref callTarget);
 
             if (callTarget == null)
@@ -327,7 +333,7 @@ namespace Compiler.CodeGeneration2
                     throw new InvalidOperationException("Expression result type cannot be null here");
                 }
 
-                if (expressionResultType.IsAssignableFrom(typeof(MulticastDelegate)))
+                if (expressionResultType.IsAssignableFrom(store.Types["System.MulticastDelegate"]))
                 {
                     throw new InvalidOperationException("Target must be a delegate");
                 }
@@ -358,7 +364,7 @@ namespace Compiler.CodeGeneration2
 
                 // Find the constructor
                 var constructor = store.Constructors[expressionResultType]
-                    .Where(x => store.ConstructorParameters[x].SequenceEqual(new Type[] { typeof(object), typeof(IntPtr) }))
+                    .Where(x => store.ConstructorParameters[x].SequenceEqual(delegateConstructorTypes))
                     .First();
 
                 // Object is already on stack
@@ -384,10 +390,10 @@ namespace Compiler.CodeGeneration2
             throw new InvalidOperationException("Not supported");
         }
 
-        private void HandleExpressionOpExpression(ExpressionOpExpressionSyntaxNode expOpEx, ref Type? expressionResultType)
+        private void HandleExpressionOpExpression(ExpressionOpExpressionSyntaxNode expOpEx, ref IType? expressionResultType)
         {
-            Type? leftType = null;
-            Type? rightType = null;
+            IType? leftType = null;
+            IType? rightType = null;
 
             WriteExpression(expOpEx.Left, true, false, ref leftType);
             WriteExpression(expOpEx.Right, true, false, ref rightType);
@@ -414,12 +420,12 @@ namespace Compiler.CodeGeneration2
                 case SupportedOperation.LessThen:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitClt();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.GreaterThen:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCgt();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.NotEqual:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
@@ -427,12 +433,12 @@ namespace Compiler.CodeGeneration2
                     // This is how to invert a bool
                     generator.EmitLdcI40();
                     generator.EmitCeq();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.Equals:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCeq();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.LessThenOrEqualTo:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
@@ -440,7 +446,7 @@ namespace Compiler.CodeGeneration2
                     // This is how to invert a bool
                     generator.EmitLdcI40();
                     generator.EmitCeq();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.GreaterThenOrEqualTo:
                     CheckCanArithmaticTypeOperations(leftType, rightType);
@@ -448,7 +454,7 @@ namespace Compiler.CodeGeneration2
                     // This is how to invert a bool
                     generator.EmitLdcI40();
                     generator.EmitCeq();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     return;
                 default:
                     throw new InvalidOperationException("Unsupported operation");
@@ -456,10 +462,10 @@ namespace Compiler.CodeGeneration2
             expressionResultType = leftType;
         }
 
-        private void HandleMethodCall(MethodCallExpression methodCall, ref Type? expressionResultType)
+        private void HandleMethodCall(MethodCallExpression methodCall, ref IType? expressionResultType)
         {
             bool isStatic = true;
-            Type? callTarget = null;
+            IType? callTarget = null;
             if (methodCall.Expression is MethodCallExpression)
             {
                 isStatic = false;
@@ -472,7 +478,7 @@ namespace Compiler.CodeGeneration2
                 {
                     isStatic = false;
 
-                    Type? rexpressionType = null;
+                    IType? rexpressionType = null;
 
                     WriteExpression(vdn, true, true, ref rexpressionType);
 
@@ -496,13 +502,13 @@ namespace Compiler.CodeGeneration2
                 throw new InvalidOperationException("Must have a target");
             }
 
-            var callParameterTypes = new List<Type>();
+            var callParameterTypes = new List<IType>();
             foreach (var callParams in methodCall.Parameters)
             {
                 callParameterTypes.Add(WriteCallParameter(callParams));
             }
 
-            MethodInfo? methodToCall = null;
+            IMethodInfo? methodToCall = null;
 
             if (store.Methods!.TryGetValue(callTarget, out var localMethodList))
             {
@@ -545,18 +551,18 @@ namespace Compiler.CodeGeneration2
             expressionResultType = methodToCall.ReturnType;
         }
 
-        private void HandleNewConstructor(NewConstructorExpression newConstructor, ref Type? expressionResultType)
+        private void HandleNewConstructor(NewConstructorExpression newConstructor, ref IType? expressionResultType)
         {
             if (store.Types.TryGetValue(newConstructor.Name, out var callTarget))
             {
-                var callParameterTypes = new List<Type>();
+                var callParameterTypes = new List<IType>();
                 // Calling a static function
                 foreach (var callParams in newConstructor.Parameters)
                 {
                     callParameterTypes.Add(WriteCallParameter(callParams));
                 }
 
-                ConstructorInfo? methodToCall = null;
+                IConstructorInfo? methodToCall = null;
 
                 if (store.Constructors!.TryGetValue(callTarget, out var localConstructorList))
                 {
@@ -586,15 +592,15 @@ namespace Compiler.CodeGeneration2
 
         }
 
-        private void HandleNewArray(NewArrExpression newConstructor, ref Type? expressionResultType)
+        private void HandleNewArray(NewArrExpression newConstructor, ref IType? expressionResultType)
         {
             if (store.Types.TryGetValue(newConstructor.Name, out var callTarget))
             {
                 var arrayType = callTarget.MakeArrayType();
 
-                Type? sizeResultType = null;
+                IType? sizeResultType = null;
                 WriteExpression(newConstructor.Expression, true, false, ref sizeResultType);
-                TypeCheck(typeof(int), sizeResultType);
+                TypeCheck(store.Types["System.Int32"], sizeResultType);
 
                 generator.EmitNewarr(callTarget);
 
@@ -606,9 +612,9 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref Type? expressionResultType)
+        private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref IType? expressionResultType)
         {
-            Type? callTarget = null;
+            IType? callTarget = null;
             WriteExpression(varAccess.Expression, true, false, ref callTarget);
 
             if (callTarget == null)
@@ -616,7 +622,7 @@ namespace Compiler.CodeGeneration2
                 throw new InvalidOperationException("No target for field access");
             }
 
-            FieldInfo? methodToCall = null;
+            IFieldInfo? methodToCall = null;
 
             if (store.Fields!.TryGetValue(callTarget, out var localMethodList))
             {
@@ -646,9 +652,9 @@ namespace Compiler.CodeGeneration2
             expressionResultType = methodToCall.FieldType;
         }
 
-        private void HandleArrayExpression(ArrayIndexExpression arrIdx, bool isRight, ref Type? expressionResultType)
+        private void HandleArrayExpression(ArrayIndexExpression arrIdx, bool isRight, ref IType? expressionResultType)
         {
-            Type? callTarget = null;
+            IType? callTarget = null;
             WriteExpression(arrIdx.Expression, true, false, ref callTarget);
 
             if (callTarget == null)
@@ -661,10 +667,10 @@ namespace Compiler.CodeGeneration2
                 throw new InvalidOperationException("Target must be an array");
             }
 
-            Type? lengthType = null;
+            IType? lengthType = null;
             WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
 
-            TypeCheck(typeof(int), lengthType);
+            TypeCheck(store.Types["System.Int32"], lengthType);
 
             expressionResultType = callTarget.GetMethod("Get").ReturnType;
 
@@ -678,7 +684,7 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight, bool willBeMethodCall, ref Type? expressionResultType)
+        private void WriteExpression(ExpressionSyntaxNode? expression, bool isRight, bool willBeMethodCall, ref IType? expressionResultType)
         {
             if (expression == null)
             {
@@ -689,19 +695,19 @@ namespace Compiler.CodeGeneration2
             {
                 case IntConstantSyntaxNode intConstant:
                     generator.EmitLdcI4(intConstant.Value);
-                    expressionResultType = typeof(int);
+                    expressionResultType = store.Types["System.Int32"];
                     break;
                 case StringConstantNode stringConstant:
                     generator.EmitLdstr(stringConstant.Value);
-                    expressionResultType = typeof(string);
+                    expressionResultType = store.Types["System.String"];
                     break;
                 case TrueConstantNode _:
                     generator.EmitTrue();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     break;
                 case FalseConstantNode _:
                     generator.EmitFalse();
-                    expressionResultType = typeof(bool);
+                    expressionResultType = store.Types["System.Boolean"];
                     break;
                 case NullConstantNode _:
                     generator.EmitLdnull();
@@ -779,10 +785,10 @@ namespace Compiler.CodeGeneration2
             // mark bottom label after statments
             generator.MarkLabel(bottomLabel);
 
-            Type? expressionResultType = null;
+            IType? expressionResultType = null;
             WriteExpression(statement.Expression, true, false, ref expressionResultType);
             // Result of expression must be a bool
-            TypeCheck(typeof(bool), expressionResultType);
+            TypeCheck(store.Types["System.Boolean"], expressionResultType);
             generator.EmitBrtrue(topLabel);
 
 
@@ -793,10 +799,10 @@ namespace Compiler.CodeGeneration2
             var elseLabel = generator.DefineLabel();
             var endLabel = generator.DefineLabel();
 
-            Type? expressionResultType = null;
+            IType? expressionResultType = null;
             WriteExpression(statement.Expression, true, false, ref expressionResultType);
             // Result of expression must be a bool
-            TypeCheck(typeof(bool), expressionResultType);
+            TypeCheck(store.Types["System.Boolean"], expressionResultType);
             generator.EmitBrfalse(elseLabel);
 
             // Emit top statements
@@ -819,7 +825,7 @@ namespace Compiler.CodeGeneration2
 
         public bool WriteStatement(StatementSyntaxNode statement)
         {
-            Type? expressionResultType = null;
+            IType? expressionResultType = null;
 
             switch (statement)
             {
@@ -857,7 +863,7 @@ namespace Compiler.CodeGeneration2
                     break;
                 case ExpressionEqualsExpressionSyntaxNode expEqualsExp:
                     {
-                        Type? rightType = null;
+                        IType? rightType = null;
 
                         var lastOp = WriteLValueExpression(expEqualsExp.Left, out var leftType);
 
@@ -869,14 +875,14 @@ namespace Compiler.CodeGeneration2
                     break;
                 case ExpressionSyntaxNode expStatement:
                     WriteExpression(expStatement, true, false, ref expressionResultType);
-                    if (expressionResultType != null && expressionResultType != typeof(void))
+                    if (expressionResultType != null && expressionResultType.FullName != "System.Void")
                     {
                         throw new NotSupportedException("Stack must be emptied");
                     }
                     break;
                 case BaseClassConstructorSyntax _:
                     generator.EmitLdthis();
-                    generator.EmitConstructorCall(typeof(object).GetConstructor(Array.Empty<Type>()));
+                    generator.EmitConstructorCall(baseConstructorCall);
                     break;
                 case WhileStatement whileStatement:
                     HandleWhileStatement(whileStatement);

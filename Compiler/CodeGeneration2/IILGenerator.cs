@@ -3,32 +3,33 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using Compiler.CodeGeneration2.Builders;
 
 namespace Compiler.CodeGeneration2
 {
     public interface IILGenerator
     {
-        void EmitConstructorCall(ConstructorInfo constructorInfo);
+        void EmitConstructorCall(IConstructorInfo constructorInfo);
 
-        void EmitCall(MethodInfo methodInfo);
+        void EmitCall(IMethodInfo methodInfo);
 
-        void EmitCallvirt(MethodInfo methodInfo);
+        void EmitCallvirt(IMethodInfo methodInfo);
 
         void EmitLdnull();
 
         void EmitDup();
 
-        void EmitLdftn(MethodInfo method);
+        void EmitLdftn(IMethodInfo method);
 
-        void EmitLdvirtftn(MethodInfo method);
+        void EmitLdvirtftn(IMethodInfo method);
 
-        void EmitNewobj(ConstructorInfo constructor);
+        void EmitNewobj(IConstructorInfo constructor);
 
-        void EmitLdfld(FieldInfo field);
+        void EmitLdfld(IFieldInfo field);
 
-        void EmitStfld(FieldInfo field);
+        void EmitStfld(IFieldInfo field);
 
-        void EmitLdflda(FieldInfo field);
+        void EmitLdflda(IFieldInfo field);
 
         void EmitLdarg(short idx);
 
@@ -36,11 +37,11 @@ namespace Compiler.CodeGeneration2
 
         void EmitStarg(short idx);
 
-        void EmitStloc(LocalBuilder local);
+        void EmitStloc(ILocalBuilder local);
 
-        void EmitLdloc(LocalBuilder local);
+        void EmitLdloc(ILocalBuilder local);
 
-        void EmitLdloca(LocalBuilder local);
+        void EmitLdloca(ILocalBuilder local);
 
         void EmitLdthis();
 
@@ -80,14 +81,14 @@ namespace Compiler.CodeGeneration2
 
         void EmitRet();
 
-        LocalBuilder DeclareLocal(Type type);
+        ILocalBuilder DeclareLocal(IType type);
 
-        void EmitBox(Type type);
+        void EmitBox(IType type);
 
-        void EmitNewarr(Type type);
+        void EmitNewarr(IType type);
 
-        void EmitLdelem(Type type);
+        void EmitLdelem(IType type);
 
-        void EmitStelem(Type type);
+        void EmitStelem(IType type);
     }
 }

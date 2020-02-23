@@ -4,13 +4,16 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using Compiler.CodeGeneration2.Builders;
 using Compiler.Parser.Nodes;
 
 namespace Compiler.TypeChecker
 {
     public class SimpleTypeChecker : ITypeChecker
     {
-        public static void CheckCanArithmaticTypeOperations(Type? leftType, Type? rightType)
+        public static IType? VoidType { get; set; }
+
+        public static void CheckCanArithmaticTypeOperations(IType? leftType, IType? rightType)
         {
             if (leftType == null)
             {
@@ -22,18 +25,18 @@ namespace Compiler.TypeChecker
                 throw new ArgumentNullException(nameof(rightType), "Right type really cannot be null here");
             }
 
-            if (rightType != leftType)
+            if (rightType.FullName != leftType.FullName)
             {
                 throw new InvalidOperationException($"Types must be equal: {leftType.FullName} - {rightType.FullName}");
             }
 
-            if (leftType != typeof(int))
+            if (leftType.FullName != typeof(int).FullName)
             {
                 throw new InvalidOperationException($"Cannot perform arithmatic on {leftType.FullName}");
             }
         }
 
-        public static void TypeCheck(Type? leftType, Type? rightType)
+        public static void TypeCheck(IType? leftType, IType? rightType)
         {
             if (leftType == null)
             {
@@ -43,7 +46,11 @@ namespace Compiler.TypeChecker
             // A null right type is void
             if (rightType == null)
             {
-                rightType = typeof(void);
+                if (VoidType == null)
+                {
+                    throw new InvalidOperationException("Void type must be set");
+                }
+                rightType = VoidType;
             }
 
             if (!leftType.IsAssignableFrom(rightType))

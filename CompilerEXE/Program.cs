@@ -6,8 +6,9 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Compiler;
-using Compiler.CodeGeneration;
 using Compiler.CodeGeneration2;
+using Compiler.CodeGeneration2.Builders;
+using Compiler.CodeGeneration2.EmitBuilders;
 using Compiler.Parser;
 using Compiler.Parser.Nodes;
 using Compiler.Tokenizer;
@@ -17,6 +18,64 @@ namespace CompilerEXE
 {
     public class Program
     {
+        static Assembly[] Assemblies = Array.Empty<Assembly>();
+
+        static (IType[] delegateConstructorTypes, IType voidType, IConstructorInfo baseInfo) GenerateAssemblyTypes(CodeGenerationStore store)
+        {
+            foreach (var assembly in Assemblies)
+            {
+                var types = assembly.GetTypes().Where(x => x.IsPublic).Select(x => new EmitType(x));
+
+                foreach (var type in types)
+                {
+
+                    store.Types.Add(type.FullName, type);
+                }
+            }
+
+            foreach (var type in store.Types.Values)
+            {
+
+                var fieldInfos = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+
+                store.Fields.Add(type, fieldInfos);
+
+                var methodInfos = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+
+                store.Methods.Add(type, methodInfos);
+
+                foreach (var method in methodInfos)
+                {
+                    store.MethodParameters.Add(method, method.GetParameters());
+                }
+
+                var constructorInfos = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+
+                store.Constructors.Add(type, constructorInfos);
+
+                foreach (var constructor in constructorInfos)
+                {
+                    store.ConstructorParameters.Add(constructor, constructor.GetParameters().ToArray());
+                }
+
+            }
+
+            store.Types.Clear();
+            foreach (var type in EmitType.TypeCache)
+            {
+                if (type.Key.FullName != null)
+                {
+                    store.Types.Add(type.Key.FullName, type.Value);
+                }
+            }
+
+            var delegateConstructorTypes = new IType[] { store.Types["System.Object"], store.Types["System.IntPtr"] };
+            var voidType = store.Types["System.Void"];
+            var objConstructorArr = store.Types["System.Object"];
+            var objConstructor = store.Types["System.Object"].GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+            return (delegateConstructorTypes, voidType, objConstructor);
+        }
+
         static void Main(string? programName = null, string[]? args = null)
         {
             var tracer = new Tracer();
@@ -67,7 +126,7 @@ namespace CompilerEXE
 
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
-            var codeGenerator = new NewCodeGenerator();
+            var codeGenerator = new NewCodeGenerator(GenerateAssemblyTypes);
 
             foreach (var file in args)
             {
@@ -78,10 +137,14 @@ namespace CompilerEXE
                 tracer.AddEpoch($"Parsing {file}");
             }
 
+            Assemblies = assemblies;
+
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-            var entryPoint = codeGenerator.GenerateAssembly(rootNode, createdModule, assemblies, tracer);
+            var emitModuleBuilder = new EmitModuleBuilder(createdModule);
+
+            var entryPoint = codeGenerator.GenerateAssembly(rootNode, emitModuleBuilder, tracer);
 
             tracer.AddEpoch("Code Generation");
 
@@ -90,7 +153,7 @@ namespace CompilerEXE
                 throw new InvalidOperationException("Entry point must be null");
             }
 
-            createdAssembly.SetEntryPoint(entryPoint);
+            createdAssembly.SetEntryPoint(((EmitMethodInfo)entryPoint).MethodInfo);
 
             createdAssembly.Save(programName + ".exe");
 
