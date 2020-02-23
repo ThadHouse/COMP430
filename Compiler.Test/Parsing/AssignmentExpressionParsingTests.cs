@@ -88,5 +88,32 @@ namespace Compiler.Test.Parsing
             Assert.Equal("b", arrGetterExpression.Name);
             Assert.Equal(42, arrIdxExpression.Value);
         }
+
+        [Fact]
+        public void TestAssignVariableToArray()
+        {
+            var list = new List<IToken>()
+            {
+                new IdentifierToken("b"),
+                new LeftBracketToken(),
+                new IntegerConstantToken(42),
+                new RightBracketToken(),
+                new EqualsToken(),
+                new IdentifierToken("a"),
+                new SemiColonToken(),
+            };
+
+            var combined = CombineTokens(list);
+            parser.ParseTokens(combined, rootNode);
+            var statement = GetStatement();
+            var equals = Assert.IsType<ExpressionEqualsExpressionSyntaxNode>(statement);
+            var lhs = Assert.IsType<ArrayIndexExpression>(equals.Left);
+            var rhs = Assert.IsType<VariableSyntaxNode>(equals.Right);
+            Assert.Equal("a", rhs.Name);
+            var arrGetterExpression = Assert.IsType<VariableSyntaxNode>(lhs.Expression);
+            var arrIdxExpression = Assert.IsType<IntConstantSyntaxNode>(lhs.LengthExpression);
+            Assert.Equal("b", arrGetterExpression.Name);
+            Assert.Equal(42, arrIdxExpression.Value);
+        }
     }
 }

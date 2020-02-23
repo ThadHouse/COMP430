@@ -58,6 +58,26 @@ namespace Compiler.CodeGeneration2
         {
             switch (expression)
             {
+                case ArrayIndexExpression arrIdx:
+                    Type? arrayType = null;
+                    Type? lengthType = null;
+
+                    WriteExpression(arrIdx.Expression, true, false, ref arrayType);
+                    WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
+
+                    TypeCheck(typeof(int), lengthType);
+
+                    if (arrayType == null)
+                    {
+                        throw new InvalidOperationException("Array type must have been found");
+                    }
+
+                    // Use the runtime provided Get() method to determine the inner type of the array
+                    var arrayRootType = arrayType.GetMethod("Get").ReturnType;
+
+                    // The expression needs the inner array type, then will call a Stelem
+                    expressionResultType = arrayRootType;
+                    return () => generator.EmitStelem(arrayRootType);
                 case VariableSyntaxNode varNode:
                     if (currentMethodInfo.Locals.TryGetValue(varNode.Name, out var localVar))
                     {
@@ -502,33 +522,6 @@ namespace Compiler.CodeGeneration2
 
             if (methodToCall == null)
             {
-                if (callTarget.IsArray && methodCall.Name == "Set")
-                {
-                    // Special case, we're setting an array
-
-                    // Still need to type check however
-                    if (callParameterTypes.Count != 2)
-                    {
-                        throw new InvalidOperationException("There must be only 2 parameters to set");
-                    }
-                    if (callParameterTypes[0] != typeof(int))
-                    {
-                        throw new InvalidOperationException("First parameter must be index");
-                    }
-
-                    var storeType = callParameterTypes[1];
-
-                    if (storeType.MakeArrayType() != callTarget)
-                    {
-                        throw new InvalidOperationException("Must be storing into the correct type of array");
-                    }
-
-                    generator.EmitStelem(storeType);
-
-                    expressionResultType = typeof(void);
-                    return;
-                }
-
                 throw new InvalidOperationException("Method not found");
             }
             if (isStatic)

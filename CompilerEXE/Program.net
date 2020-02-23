@@ -5,14 +5,20 @@ delegate void otherfunc();
 delegate string strfunc();
 
 class Testing {
+    field string[] myArr;
+
     method static void strArrThings() {
-        string[] a = newarr string(10);
-        a.Set(2, "Hello World");
+        auto a = new Testing();
+        a.myArr = newarr string(10);
+        #string[] a = newarr string(10);
+        a.myArr[2] = "Hello World!";
+        #a.Set(2, "Hello World");
     }
 
     method static int[] createIntArray() {
         int[] a = newarr int(32);
-        a.Set(2, 42);
+        #a.Set(2, 42);
+        a[2] = 42;
         int x = a[2];
         System::Console.WriteLine(x);
         return a;

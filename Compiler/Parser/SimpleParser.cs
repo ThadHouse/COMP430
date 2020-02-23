@@ -85,7 +85,19 @@ namespace Compiler.Parser
 
                     tokens = tokens.Slice(1);
 
-                    return new ArrayIndexExpression(parent, wouldBeLeft, exp);
+                    if (tokens.IsEmpty)
+                    {
+                        throw new InvalidOperationException("There is going to have to be at least one thing here");
+                    }
+
+                    var arrIdxExp = new ArrayIndexExpression(parent, wouldBeLeft, exp);
+
+                    if (tokens[0] is SemiColonToken)
+                    {
+                        return arrIdxExp;
+                    }
+
+                    return ParseExpression(ref tokens, parent, arrIdxExp);
                 }
                 else if (curToken is DotToken)
                 {
@@ -150,6 +162,34 @@ namespace Compiler.Parser
                     {
                         tokens = tokens.Slice(1);
                         return new MethodReferenceExpression(parent, wouldBeLeft, id.Name);
+                    }
+                    else if (tokens[1] is LeftBracketToken)
+                    {
+                        tokens = tokens.Slice(2);
+                        var arrIdxExp = ParseExpression(ref tokens, parent, null);
+
+                        if (arrIdxExp == null)
+                        {
+                            throw new InvalidOperationException("Must have an expression in the array indexer");
+                        }
+
+                        if (tokens.IsEmpty)
+                        {
+                            throw new InvalidOperationException("Must have more tokens");
+                        }
+
+                        if (!(tokens[0] is RightBracketToken))
+                        {
+                            throw new InvalidOperationException("Must have a right bracket");
+                        }
+
+                        tokens = tokens.Slice(1);
+
+                        var arrAccessExp = new VariableAccessExpression(parent, wouldBeLeft, id.Name);
+
+                        var arrExp = new ArrayIndexExpression(parent, arrAccessExp, arrIdxExp);
+
+                        return ParseExpression(ref tokens, parent, arrExp);
                     }
                     else
                     {
