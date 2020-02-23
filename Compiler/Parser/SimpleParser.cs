@@ -12,303 +12,337 @@ namespace Compiler.Parser
 {
     public class SimpleParser : IParser
     {
+        // Trying to parse an exception
+        // When parsing an expression, any left markers like (, {, or [ must not be the first token
+        // When returned, any right markers like ), }, ] and ; will still be in the token stream
         private static ExpressionSyntaxNode? ParseExpression(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent, ExpressionSyntaxNode? wouldBeLeft)
         {
-
-            while (!tokens.IsEmpty)
+            if (tokens.IsEmpty)
             {
-                var curToken = tokens[0];
-                var prevTokens = tokens;
+                throw new InvalidOperationException("We need a token to do any attempt at parsing an expression");
+            }
+
+            var curToken = tokens[0];
+            var prevTokens = tokens;
+            tokens = tokens.Slice(1);
+
+            // We first need to special case any recursive expressions
+
+            // First check if we are a supported operation
+            if (curToken is ISupportedOperationToken op)
+            {
+                // A supported op requires something on the left
+                if (wouldBeLeft == null)
+                {
+                    throw new InvalidTokenException("Left can't be null here");
+                }
+
+                // Grab the right side expressions
+                var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                // Right side expression can not be null either
+                if (couldBeRight == null)
+                {
+                    throw new InvalidTokenException("Right can't be null either");
+                }
+
+                // We are an ExpOpExp, create with the left side, the right side, and the operation
+                return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, op.Operation), couldBeRight);
+            }
+            else if (curToken is EqualsToken)
+            {
+                // Check if we are an assignment operation
+                // Assignment must have a left as well
+                if (wouldBeLeft == null)
+                {
+                    throw new InvalidTokenException("Left can't be null here");
+                }
+
+                // Parse the right, it must exist, can't assign nothing
+                var couldBeRight = ParseExpression(ref tokens, parent, null);
+
+                if (couldBeRight == null)
+                {
+                    throw new InvalidTokenException("Right can't be null either");
+                }
+
+                return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
+            }
+            else if (curToken is LeftBracketToken)
+            {
+                // We are creating an array indexer
+                // We must have an expression to attach the array indexer to
+                if (tokens.Length < 2)
+                {
+                    throw new InvalidTokenException("Not enough tokens left");
+                }
+
+                if (wouldBeLeft == null)
+                {
+                    throw new InvalidTokenException("Left must not be null");
+                }
+
+                // There will be some expression to get the length
+                var lengthExpression = ParseExpression(ref tokens, parent, null);
+                if (lengthExpression == null)
+                {
+                    throw new InvalidTokenException("Must have an expression");
+                }
+
+                // There has to be a right bracket after parsing the inner expression
+                // You also will need to have either a ; or some other expression on the right
+                if (tokens.Length < 2)
+                {
+                    throw new InvalidTokenException("There must be a token");
+                }
+
+                if (!(tokens[0] is RightBracketToken))
+                {
+                    throw new InvalidTokenException("Must be a right bracket");
+                }
+
+                // Remove the ]
                 tokens = tokens.Slice(1);
 
-                // Special case the supported of token
+                // Create our array expression
+                var arrIdxExp = new ArrayIndexExpression(parent, wouldBeLeft, lengthExpression);
 
-                if (curToken is ISupportedOperationToken op)
+                // TODO see if the same logic for detecting the end of a method train
+                // works here. It should in theory. About 20 lines down
+
+                // if there is a ;, this is the end of the expression
+                // Don't remove the semi colon, but just return the array
+                // indexing expression
+                if (tokens[0] is SemiColonToken)
                 {
-                    if (wouldBeLeft == null)
+                    return arrIdxExp;
+                }
+
+                // Otherwise, parse the expression to the right of the indexer and return that
+                return ParseExpression(ref tokens, parent, arrIdxExp);
+            }
+            else if (curToken is DotToken)
+            {
+                // Method call or lots of fields
+                // Next token must be an identifier
+                if (tokens.Length < 3)
+                {
+                    throw new InvalidTokenException("Not enough tokens left");
+                }
+
+                if (!(tokens[0] is IdentifierToken id))
+                {
+                    throw new InvalidTokenException("An ID token must be next");
+                }
+
+                // Must be a left hand side if we have a .
+                if (wouldBeLeft == null)
+                {
+                    throw new InvalidTokenException("Left can't be null");
+                }
+
+                // There are a few things that can happen after a ., lets try them
+                if (tokens[1] is LeftParenthesisToken)
+                {
+                    // Left paranthesis means a method call
+                    // Parse the call parameters
+                    tokens = tokens.Slice(2);
+                    var parameters = ParseCallParameters(ref tokens, parent);
+
+                    // Create the method call expression
+                    var methodExpression = new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
+
+                    // Try to parse an expression afterward
+                    // If we could, return it
+                    // Otherwise return the method expression as the end train
+                    var continuingExpression = ParseExpression(ref tokens, parent, methodExpression);
+
+                    if (continuingExpression != null)
                     {
-                        throw new InvalidTokenException("Left can't be null here");
+                        return continuingExpression;
                     }
+
+                    return methodExpression;
+                }
+                else if (tokens[1] is DotToken)
+                {
+                    // Nested field access
+                    // Create a variable access, then parse everything to the right of that.
+                    tokens = tokens.Slice(1);
+                    return ParseExpression(ref tokens, parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name));
+                }
+                else if (tokens[1] is RightParenthesisToken)
+                {
+                    // We might be inside a call parameter detector. If so,
+                    // Just return a variable access since thats what we've done
+                    tokens = tokens.Slice(1);
+                    return new VariableAccessExpression(parent, wouldBeLeft, id.Name);
+                }
+                else if (tokens[1] is EqualsToken)
+                {
+                    // Next is an equals, we currently have the left side as a variable
+                    // Parse the right side
+                    tokens = tokens.Slice(2);
 
                     var couldBeRight = ParseExpression(ref tokens, parent, null);
 
                     if (couldBeRight == null)
                     {
-                        throw new InvalidTokenException("Right can't be null either");
+                        throw new InvalidTokenException("Right cannot be null here");
                     }
 
-                    return new ExpressionOpExpressionSyntaxNode(parent, wouldBeLeft, new OperationSyntaxNode(parent, op.Operation), couldBeRight);
+                    return new ExpressionEqualsExpressionSyntaxNode(parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name), couldBeRight);
+                    ;
                 }
-                else if (curToken is EqualsToken)
+                else if (tokens[1] is SemiColonToken)
                 {
-                    if (wouldBeLeft == null)
-                    {
-                        throw new InvalidTokenException("Left can't be null here");
-                    }
-
-                    var couldBeRight = ParseExpression(ref tokens, parent, null);
-
-                    if (couldBeRight == null)
-                    {
-                        throw new InvalidTokenException("Right can't be null either");
-                    }
-
-                    return new ExpressionEqualsExpressionSyntaxNode(parent, wouldBeLeft, couldBeRight);
+                    //End of an expression
+                    // The slice slices off the next identifier, not the semi colon
+                    tokens = tokens.Slice(1);
+                    return new MethodReferenceExpression(parent, wouldBeLeft, id.Name);
                 }
-                else if (curToken is LeftBracketToken)
+                else if (tokens[1] is LeftBracketToken)
                 {
-                    if (tokens.Length < 2)
-                    {
-                        throw new InvalidTokenException("Not enough tokens left");
-                    }
+                    // We are creating a nested array indexer
+                    // Parse the index expression, then create the array expression
+                    // Then return a Parsed expression
+                    tokens = tokens.Slice(2);
+                    var arrIdxExp = ParseExpression(ref tokens, parent, null);
 
-                    if (wouldBeLeft == null)
+                    if (arrIdxExp == null)
                     {
-                        throw new InvalidTokenException("Left must not be null");
-                    }
-
-                    var exp = ParseExpression(ref tokens, parent, null);
-                    if (exp == null)
-                    {
-                        throw new InvalidTokenException("Must have an expression");
+                        throw new InvalidOperationException("Must have an expression in the array indexer");
                     }
 
                     if (tokens.IsEmpty)
                     {
-                        throw new InvalidTokenException("There must be a token");
+                        throw new InvalidOperationException("Must have more tokens");
                     }
 
                     if (!(tokens[0] is RightBracketToken))
                     {
-                        throw new InvalidTokenException("Must be a right bracket");
+                        throw new InvalidOperationException("Must have a right bracket");
                     }
 
                     tokens = tokens.Slice(1);
 
-                    if (tokens.IsEmpty)
-                    {
-                        throw new InvalidOperationException("There is going to have to be at least one thing here");
-                    }
+                    var arrAccessExp = new VariableAccessExpression(parent, wouldBeLeft, id.Name);
 
-                    var arrIdxExp = new ArrayIndexExpression(parent, wouldBeLeft, exp);
+                    var arrExp = new ArrayIndexExpression(parent, arrAccessExp, arrIdxExp);
 
-                    if (tokens[0] is SemiColonToken)
-                    {
-                        return arrIdxExp;
-                    }
-
-                    return ParseExpression(ref tokens, parent, arrIdxExp);
+                    return ParseExpression(ref tokens, parent, arrExp);
                 }
-                else if (curToken is DotToken)
+                else
                 {
-                    // Method call or lots of fields
-                    // Next token must be an identifier
-                    if (tokens.Length < 3)
-                    {
-                        throw new InvalidTokenException("Not enough tokens left");
-                    }
-
-                    if (!(tokens[0] is IdentifierToken id))
-                    {
-                        throw new InvalidTokenException("An ID token must be next");
-                    }
-
-                    if (wouldBeLeft == null)
-                    {
-                        throw new InvalidTokenException("Left can't be null");
-                    }
-
-                    if (tokens[1] is LeftParenthesisToken)
-                    {
-                        tokens = tokens.Slice(2);
-                        var parameters = ParseCallParameters(ref tokens, parent);
-
-                        var methodExpression = new MethodCallExpression(parent, wouldBeLeft, id.Name, parameters);
-
-                        var continuingExpression = ParseExpression(ref tokens, parent, methodExpression);
-
-                        if (continuingExpression != null)
-                        {
-                            return continuingExpression;
-                        }
-
-                        return methodExpression;
-                    }
-                    else if (tokens[1] is DotToken)
-                    {
-                        tokens = tokens.Slice(1);
-                        return ParseExpression(ref tokens, parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name));
-                    }
-                    else if (tokens[1] is RightParenthesisToken)
-                    {
-                        tokens = tokens.Slice(1);
-                        return new VariableAccessExpression(parent, wouldBeLeft, id.Name);
-                    }
-                    else if (tokens[1] is EqualsToken)
-                    {
-                        tokens = tokens.Slice(2);
-
-                        var couldBeRight = ParseExpression(ref tokens, parent, null);
-
-                        if (couldBeRight == null)
-                        {
-                            throw new InvalidTokenException("Right cannot be null here");
-                        }
-
-                        return new ExpressionEqualsExpressionSyntaxNode(parent, new VariableAccessExpression(parent, wouldBeLeft, id.Name), couldBeRight);
-                        ;
-                    }
-                    else if (tokens[1] is SemiColonToken)
-                    {
-                        tokens = tokens.Slice(1);
-                        return new MethodReferenceExpression(parent, wouldBeLeft, id.Name);
-                    }
-                    else if (tokens[1] is LeftBracketToken)
-                    {
-                        tokens = tokens.Slice(2);
-                        var arrIdxExp = ParseExpression(ref tokens, parent, null);
-
-                        if (arrIdxExp == null)
-                        {
-                            throw new InvalidOperationException("Must have an expression in the array indexer");
-                        }
-
-                        if (tokens.IsEmpty)
-                        {
-                            throw new InvalidOperationException("Must have more tokens");
-                        }
-
-                        if (!(tokens[0] is RightBracketToken))
-                        {
-                            throw new InvalidOperationException("Must have a right bracket");
-                        }
-
-                        tokens = tokens.Slice(1);
-
-                        var arrAccessExp = new VariableAccessExpression(parent, wouldBeLeft, id.Name);
-
-                        var arrExp = new ArrayIndexExpression(parent, arrAccessExp, arrIdxExp);
-
-                        return ParseExpression(ref tokens, parent, arrExp);
-                    }
-                    else
-                    {
-                        throw new InvalidTokenException("A token must be handled here");
-                    }
-
-
-
-
+                    throw new InvalidTokenException("A token must be handled here");
                 }
-
-                if (wouldBeLeft != null)
-                {
-                    tokens = prevTokens;
-                    return null;
-                }
-
-                ExpressionSyntaxNode? variableNode;
-
-                switch (curToken)
-                {
-                    case IntegerConstantToken numericConstant:
-                        variableNode = new IntConstantSyntaxNode(parent, numericConstant.Value);
-                        break;
-                    case StringConstantToken stringConstant:
-                        variableNode = new StringConstantNode(parent, stringConstant.Value);
-                        break;
-                    case IdentifierToken { Name: "this" } _:
-                        variableNode = new ThisConstantNode(parent);
-                        break;
-                    case IdentifierToken { Name: "true" } _:
-                        variableNode = new TrueConstantNode(parent);
-                        break;
-                    case IdentifierToken { Name: "false" } _:
-                        variableNode = new FalseConstantNode(parent);
-                        break;
-                    case IdentifierToken { Name: "null" } _:
-                        variableNode = new NullConstantNode(parent);
-                        break;
-                    case NewToken _:
-                        {
-                            if (tokens.Length < 3)
-                            {
-                                throw new InvalidTokenException("Need tokens to parse");
-                            }
-                            if (!(tokens[0] is IdentifierToken idToken))
-                            {
-                                throw new InvalidTokenException("Next token must be an identifier");
-                            }
-                            if (!(tokens[1] is LeftParenthesisToken))
-                            {
-                                throw new InvalidTokenException("Expected a left paranthesis");
-                            }
-
-                            tokens = tokens.Slice(2);
-
-                            var parameters = ParseCallParameters(ref tokens, parent);
-
-                            variableNode = new NewConstructorExpression(parent, idToken.Name, parameters);
-                            break;
-                        }
-                    case NewArrToken _:
-                        {
-                            if (tokens.Length < 3)
-                            {
-                                throw new InvalidTokenException("Need tokens to parse");
-                            }
-                            if (!(tokens[0] is IdentifierToken idToken))
-                            {
-                                throw new InvalidTokenException("Next token must be an identifier");
-                            }
-                            if (!(tokens[1] is LeftParenthesisToken))
-                            {
-                                throw new InvalidTokenException("Expected a left paranthesis");
-                            }
-
-                            tokens = tokens.Slice(2);
-
-                            var expression = ParseExpression(ref tokens, parent, null);
-
-                            if (expression == null)
-                            {
-                                throw new InvalidTokenException("Must have an expression for a newarr");
-                            }
-
-                            if (tokens.Length < 1)
-                            {
-                                throw new InvalidTokenException("Need tokens to parse");
-                            }
-                            if (!(tokens[0] is RightParenthesisToken))
-                            {
-                                throw new InvalidTokenException("Next token must be a right paranthesis");
-                            }
-                            tokens = tokens.Slice(1);
-
-
-                            variableNode = new NewArrExpression(parent, idToken.Name, expression);
-                            break;
-                        }
-                    case IdentifierToken id:
-                        variableNode = new VariableSyntaxNode(parent, id.Name);
-                        break;
-                    default:
-                        tokens = prevTokens;
-                        return null;
-                }
-
-                // If its empty, we're done
-                if (tokens.IsEmpty)
-                {
-                    return variableNode;
-                }
-
-                var attemptToParseLower = ParseExpression(ref tokens, parent, variableNode);
-
-                return attemptToParseLower ?? variableNode;
             }
 
-            throw new InvalidTokenException("Weird Tokens");
+            if (wouldBeLeft != null)
+            {
+                tokens = prevTokens;
+                return null;
+            }
+
+            ExpressionSyntaxNode? variableNode;
+
+            switch (curToken)
+            {
+                case IntegerConstantToken numericConstant:
+                    variableNode = new IntConstantSyntaxNode(parent, numericConstant.Value);
+                    break;
+                case StringConstantToken stringConstant:
+                    variableNode = new StringConstantNode(parent, stringConstant.Value);
+                    break;
+                case IdentifierToken { Name: "this" } _:
+                    variableNode = new ThisConstantNode(parent);
+                    break;
+                case IdentifierToken { Name: "true" } _:
+                    variableNode = new TrueConstantNode(parent);
+                    break;
+                case IdentifierToken { Name: "false" } _:
+                    variableNode = new FalseConstantNode(parent);
+                    break;
+                case IdentifierToken { Name: "null" } _:
+                    variableNode = new NullConstantNode(parent);
+                    break;
+                case NewToken _:
+                    {
+                        if (tokens.Length < 3)
+                        {
+                            throw new InvalidTokenException("Need tokens to parse");
+                        }
+                        if (!(tokens[0] is IdentifierToken idToken))
+                        {
+                            throw new InvalidTokenException("Next token must be an identifier");
+                        }
+                        if (!(tokens[1] is LeftParenthesisToken))
+                        {
+                            throw new InvalidTokenException("Expected a left paranthesis");
+                        }
+
+                        tokens = tokens.Slice(2);
+
+                        var parameters = ParseCallParameters(ref tokens, parent);
+
+                        variableNode = new NewConstructorExpression(parent, idToken.Name, parameters);
+                        break;
+                    }
+                case NewArrToken _:
+                    {
+                        if (tokens.Length < 3)
+                        {
+                            throw new InvalidTokenException("Need tokens to parse");
+                        }
+                        if (!(tokens[0] is IdentifierToken idToken))
+                        {
+                            throw new InvalidTokenException("Next token must be an identifier");
+                        }
+                        if (!(tokens[1] is LeftParenthesisToken))
+                        {
+                            throw new InvalidTokenException("Expected a left paranthesis");
+                        }
+
+                        tokens = tokens.Slice(2);
+
+                        var expression = ParseExpression(ref tokens, parent, null);
+
+                        if (expression == null)
+                        {
+                            throw new InvalidTokenException("Must have an expression for a newarr");
+                        }
+
+                        if (tokens.Length < 1)
+                        {
+                            throw new InvalidTokenException("Need tokens to parse");
+                        }
+                        if (!(tokens[0] is RightParenthesisToken))
+                        {
+                            throw new InvalidTokenException("Next token must be a right paranthesis");
+                        }
+                        tokens = tokens.Slice(1);
+
+
+                        variableNode = new NewArrExpression(parent, idToken.Name, expression);
+                        break;
+                    }
+                case IdentifierToken id:
+                    variableNode = new VariableSyntaxNode(parent, id.Name);
+                    break;
+                default:
+                    tokens = prevTokens;
+                    return null;
+            }
+
+            // If its empty, we're done
+            if (tokens.IsEmpty)
+            {
+                return variableNode;
+            }
+
+            var attemptToParseLower = ParseExpression(ref tokens, parent, variableNode);
+
+            return attemptToParseLower ?? variableNode;
         }
 
         private static VariableDeclarationNode? ParseVariableDeclaration(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
