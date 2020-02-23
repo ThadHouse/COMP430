@@ -502,6 +502,33 @@ namespace Compiler.CodeGeneration2
 
             if (methodToCall == null)
             {
+                if (callTarget.IsArray && methodCall.Name == "Set")
+                {
+                    // Special case, we're setting an array
+
+                    // Still need to type check however
+                    if (callParameterTypes.Count != 2)
+                    {
+                        throw new InvalidOperationException("There must be only 2 parameters to set");
+                    }
+                    if (callParameterTypes[0] != typeof(int))
+                    {
+                        throw new InvalidOperationException("First parameter must be index");
+                    }
+
+                    var storeType = callParameterTypes[1];
+
+                    if (storeType.MakeArrayType() != callTarget)
+                    {
+                        throw new InvalidOperationException("Must be storing into the correct type of array");
+                    }
+
+                    generator.EmitStelem(storeType);
+
+                    expressionResultType = typeof(void);
+                    return;
+                }
+
                 throw new InvalidOperationException("Method not found");
             }
             if (isStatic)

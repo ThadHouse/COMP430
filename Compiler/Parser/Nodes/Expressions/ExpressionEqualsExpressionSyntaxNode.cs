@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Compiler.Parser.Nodes
 {
-    class ExpressionEqualsExpressionSyntaxNode : ExpressionSyntaxNode
+    public class ExpressionEqualsExpressionSyntaxNode : ExpressionSyntaxNode
     {
         public ExpressionSyntaxNode Left { get; }
         public ExpressionSyntaxNode Right { get; }

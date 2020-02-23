@@ -67,8 +67,6 @@ namespace Compiler.Parser
                         throw new InvalidTokenException("Left must not be null");
                     }
 
-
-
                     var exp = ParseExpression(ref tokens, parent, null);
                     if (exp == null)
                     {
@@ -278,7 +276,7 @@ namespace Compiler.Parser
             // Field must have at least 3 more tokens
             if (tokens.Length < 3)
             {
-                throw new InvalidTokenException("Not enough tokens");
+                return null;
             }
 
             string? typeName = null;
@@ -359,7 +357,7 @@ namespace Compiler.Parser
 
             var parsedExpression = ParseExpression(ref tokens, parent, null);
 
-            if (parsedExpression != null && (!(parsedExpression is ArrayIndexExpression)))
+            if (parsedExpression != null)
             {
                 if (tokens.Length < 1)
                 {
