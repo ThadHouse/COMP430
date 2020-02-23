@@ -7,6 +7,6 @@ namespace Compiler.CodeGeneration2.Builders
 {
     public interface IConstructorBuilder : IConstructorInfo, IBaseMethodBuilder
     {
-        
+
     }
 }

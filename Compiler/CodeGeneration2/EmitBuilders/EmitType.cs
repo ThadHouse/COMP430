@@ -77,7 +77,7 @@ namespace Compiler.CodeGeneration2.EmitBuilders
                 var retType = GetTypeFromCache(x.ReturnType);
                 var parameters = x.GetParameters().Select(y => GetTypeFromCache(y.ParameterType)).ToArray();
                 return new EmitMethodInfo(x, retType, parameters);
-                }).ToArray();
+            }).ToArray();
             methods.Add(flags, value);
             return value;
         }

@@ -226,7 +226,7 @@ namespace Compiler.CodeGeneration2
             {
                 throw new ArgumentNullException(nameof(type));
             }
-            generator.Emit(OpCodes.Newarr, ((EmitType) type).Type);
+            generator.Emit(OpCodes.Newarr, ((EmitType)type).Type);
         }
 
         public void EmitNewobj(IConstructorInfo constructorInfo)

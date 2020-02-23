@@ -10,7 +10,7 @@ namespace Compiler.CodeGeneration2.EmitBuilders
     public class EmitFieldBuilder : EmitFieldInfo, IFieldBuilder
     {
         public FieldBuilder FieldBuilder { get; }
-        
+
         public EmitFieldBuilder(FieldBuilder fieldInfo, IType fieldType) : base(fieldInfo, fieldType)
         {
             FieldBuilder = fieldInfo;
