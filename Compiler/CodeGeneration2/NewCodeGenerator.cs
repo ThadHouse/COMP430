@@ -10,104 +10,31 @@ using Compiler.Parser.Nodes.Statements;
 
 namespace Compiler.CodeGeneration2
 {
-    public class CodeGenerationStore
-    {
-        public List<(IType returnType, IType[] parameters, IType type, IConstructorBuilder constructor)> Delegates { get; } = new List<(IType returnType, IType[] parameters, IType type, IConstructorBuilder constructor)>();
-
-        public Dictionary<string, IType> Types { get; } = new Dictionary<string, IType>();
-
-        public IType TypeDefLookup(string value)
-        {
-            if (value == null)
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
-
-            if (Types.TryGetValue(value, out var type))
-            {
-                return type;
-            }
-            if (value.EndsWith("[]", StringComparison.InvariantCultureIgnoreCase))
-            {
-                var subType = value.Substring(0, value.Length - 2);
-                type = Types[subType];
-                type = type.MakeArrayType();
-                Types.Add(value, type);
-                return type;
-            }
-            throw new KeyNotFoundException(nameof(value));
-        }
-
-        public Dictionary<IType, IReadOnlyList<IFieldInfo>> Fields { get; } = new Dictionary<IType, IReadOnlyList<IFieldInfo>>();
-        public Dictionary<IType, IReadOnlyList<IMethodInfo>> Methods { get; } = new Dictionary<IType, IReadOnlyList<IMethodInfo>>();
-        public Dictionary<IMethodInfo, IReadOnlyList<IType>> MethodParameters { get; } = new Dictionary<IMethodInfo, IReadOnlyList<IType>>();
-
-        public Dictionary<IType, IReadOnlyList<IConstructorInfo>> Constructors { get; } = new Dictionary<IType, IReadOnlyList<IConstructorInfo>>();
-        public Dictionary<IConstructorInfo, IReadOnlyList<IType>> ConstructorParameters { get; } = new Dictionary<IConstructorInfo, IReadOnlyList<IType>>();
-    }
-
-    public class GeneratedData
-    {
-        public Dictionary<ITypeBuilder, ClassSyntaxNode> Classes { get; } = new Dictionary<ITypeBuilder, ClassSyntaxNode>();
-        public Dictionary<ITypeBuilder, DelegateSyntaxNode> Delegates { get; } = new Dictionary<ITypeBuilder, DelegateSyntaxNode>();
-
-        public Dictionary<IMethodBuilder, MethodSyntaxNode> Methods { get; } = new Dictionary<IMethodBuilder, MethodSyntaxNode>();
-
-        public Dictionary<IConstructorBuilder, ConstructorSyntaxNode> Constructors { get; } = new Dictionary<IConstructorBuilder, ConstructorSyntaxNode>();
-    }
 
     public class NewCodeGenerator
     {
-        private IType[]? delegateConstructorTypes;// = new Type[] { typeof(object), typeof(IntPtr) };
-        private readonly Func<CodeGenerationStore, (IType[] delegateConstructorTypes, IType voidType, IConstructorInfo baseInfo)> constructDependentAssemblies;
+        private IType[]? delegateConstructorTypes;
+        private readonly IBuiltInTypeProvider builtInProvider;
         private IType? voidType;
         private IConstructorInfo? baseConstructorInfo;
+        private readonly IModuleBuilder moduleBuilder;
+        private readonly Tracer tracer;
 
-        public NewCodeGenerator(Func<CodeGenerationStore, (IType[] delegateConstructorTypes, IType voidType, IConstructorInfo baseInfo)> constructDependentAssemblies)
+        public NewCodeGenerator(IBuiltInTypeProvider builtInProvider, IModuleBuilder moduleBuilder,
+            Tracer tracer)
         {
-            this.constructDependentAssemblies = constructDependentAssemblies;
+            this.builtInProvider = builtInProvider;
+            this.moduleBuilder = moduleBuilder;
+            this.tracer = tracer;
         }
 
-        //private void WriteDependentTypes(CodeGenerationStore store, Assembly[] dependentAssemblies)
-        //{
-        //    foreach (var assembly in dependentAssemblies)
-        //    {
-        //        var types = assembly.GetTypes().Where(x => x.IsPublic);
-
-        //        foreach (var type in types)
-        //        {
-
-        //            store.Types.Add(type.FullName, type);
-        //            store.Fields.Add(type, type.GetFields(BindingFlags.Public | BindingFlags.Instance));
-
-        //            var methodInfos = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-
-        //            store.Methods.Add(type, methodInfos);
-
-        //            foreach (var method in methodInfos)
-        //            {
-        //                store.MethodParameters.Add(method, method.GetParameters().Select(x => x.ParameterType).ToArray());
-        //            }
-
-        //            var constructorInfos = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-
-        //            store.Constructors.Add(type, constructorInfos);
-
-        //            foreach (var constructor in constructorInfos)
-        //            {
-        //                store.ConstructorParameters.Add(constructor, constructor.GetParameters().Select(x => x.ParameterType).ToArray());
-        //            }
-        //        }
-        //    }
-        //}
-
-        private GeneratedData CreateTypesToGenerate(RootSyntaxNode rootNode, IModuleBuilder module, CodeGenerationStore store)
+        private GeneratedData CreateTypesToGenerate(RootSyntaxNode rootNode, CodeGenerationStore store)
         {
             var toGenerate = new GeneratedData();
 
             foreach (var node in rootNode.Delegates)
             {
-                var type = module.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
+                var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
 
                 toGenerate.Delegates.Add(type, node);
 
@@ -116,7 +43,7 @@ namespace Compiler.CodeGeneration2
 
             foreach (var node in rootNode.Classes)
             {
-                var type = module.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
+                var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
 
                 store.Types.Add(node.Name, type);
 
@@ -399,31 +326,20 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        public IMethodInfo? GenerateAssembly(RootSyntaxNode rootNode, IModuleBuilder module,
-            Tracer tracer)
+        public IMethodInfo? GenerateAssembly(RootSyntaxNode rootNode)
         {
             if (rootNode == null)
             {
                 throw new ArgumentNullException(nameof(rootNode));
             }
 
-            if (module == null)
-            {
-                throw new ArgumentNullException(nameof(module));
-            }
-
-            if (tracer == null)
-            {
-                throw new ArgumentNullException(nameof(tracer));
-            }
-
             var store = new CodeGenerationStore();
 
-            (delegateConstructorTypes, voidType, baseConstructorInfo) = constructDependentAssemblies(store);
+            (delegateConstructorTypes, voidType, baseConstructorInfo) = builtInProvider.GenerateAssemblyTypes(store);
 
             tracer.AddEpoch("Dependent Type Load");
 
-            var toGenerate = CreateTypesToGenerate(rootNode, module, store);
+            var toGenerate = CreateTypesToGenerate(rootNode, store);
 
             tracer.AddEpoch("Generate Types");
 

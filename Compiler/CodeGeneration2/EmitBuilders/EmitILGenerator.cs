@@ -6,7 +6,7 @@ using System.Text;
 using Compiler.CodeGeneration2.Builders;
 using Compiler.CodeGeneration2.EmitBuilders;
 
-namespace Compiler.CodeGeneration2
+namespace Compiler.CodeGeneration2.EmitBuilders
 {
     public class EmitILGenerator : IILGenerator
     {

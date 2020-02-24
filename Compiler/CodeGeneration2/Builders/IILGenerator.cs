@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 using System.Text;
 using Compiler.CodeGeneration2.Builders;
 
-namespace Compiler.CodeGeneration2
+namespace Compiler.CodeGeneration2.Builders
 {
     public interface IILGenerator
     {
