@@ -31,13 +31,16 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public bool IsArray => type.IsArray;
 
+        public string ModuleName { get; }
+
         private readonly Dictionary<BindingFlags, IFieldInfo[]> fields = new Dictionary<BindingFlags, IFieldInfo[]>();
         private readonly Dictionary<BindingFlags, IMethodInfo[]> methods = new Dictionary<BindingFlags, IMethodInfo[]>();
         private readonly Dictionary<BindingFlags, IConstructorInfo[]> constructors = new Dictionary<BindingFlags, IConstructorInfo[]>();
 
         public AsmType(SType type)
         {
-            this.type = type;
+            this.type = type ?? throw new ArgumentNullException(nameof(type));
+            ModuleName = type.Module.Name;
             TypeCache.Add(type, this);
         }
 
@@ -54,7 +57,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
         public IMethodInfo GetMethod(string methodName)
         {
             var method = type.GetMethod(methodName);
-            return new AsmMethodInfo(method, GetTypeFromCache(method.ReturnType), method.GetParameters().Select(x => GetTypeFromCache(x.ParameterType)).ToArray());
+            return new AsmMethodInfo(this, method, GetTypeFromCache(method.ReturnType), method.GetParameters().Select(x => GetTypeFromCache(x.ParameterType)).ToArray());
         }
 
         public IFieldInfo[] GetFields(BindingFlags flags)
@@ -63,7 +66,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 return value;
             }
-            value = type.GetFields(flags).Select(x => new AsmFieldInfo(x.Name, GetTypeFromCache(x.FieldType))).ToArray();
+            value = type.GetFields(flags).Select(x => new AsmFieldInfo(this, x.Name, GetTypeFromCache(x.FieldType))).ToArray();
             fields.Add(flags, value);
             return value;
         }
@@ -78,7 +81,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 var retType = GetTypeFromCache(x.ReturnType);
                 var parameters = x.GetParameters().Select(y => GetTypeFromCache(y.ParameterType)).ToArray();
-                return new AsmMethodInfo(x, retType, parameters);
+                return new AsmMethodInfo(this, x, retType, parameters);
             }).ToArray();
             methods.Add(flags, value);
             return value;
@@ -90,7 +93,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 return value;
             }
-            value = type.GetConstructors(flags).Select(x => new AsmConstructorInfo(x.GetParameters().Select(y => GetTypeFromCache(y.ParameterType)).ToArray())).ToArray();
+            value = type.GetConstructors(flags).Select(x => new AsmConstructorInfo(this, x.GetParameters().Select(y => GetTypeFromCache(y.ParameterType)).ToArray())).ToArray();
             constructors.Add(flags, value);
             return value;
         }

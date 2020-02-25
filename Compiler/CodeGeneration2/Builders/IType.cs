@@ -7,6 +7,8 @@ namespace Compiler.CodeGeneration2.Builders
 {
     public interface IType
     {
+        string ModuleName { get; }
+
         IType MakeArrayType();
 
         IMethodInfo GetMethod(string methodName);

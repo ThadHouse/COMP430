@@ -10,10 +10,13 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
     {
         private readonly IType[] parameters;
 
-        public AsmConstructorInfo(IType[] parameters)
+        public AsmConstructorInfo(IType declaringType, IType[] parameters)
         {
             this.parameters = parameters;
+            this.DeclaringType = declaringType;
         }
+
+        public IType DeclaringType { get; }
 
         public IType[] GetParameters()
         {

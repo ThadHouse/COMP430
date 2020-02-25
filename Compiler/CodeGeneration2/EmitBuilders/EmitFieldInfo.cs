@@ -14,6 +14,8 @@ namespace Compiler.CodeGeneration2.EmitBuilders
 
         public IType FieldType { get; }
 
+        public IType DeclaringType => throw new NotSupportedException();
+
         public EmitFieldInfo(FieldInfo fieldInfo, IType fieldType)
         {
             FieldType = fieldType;

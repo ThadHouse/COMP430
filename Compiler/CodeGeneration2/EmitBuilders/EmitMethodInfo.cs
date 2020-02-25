@@ -16,6 +16,8 @@ namespace Compiler.CodeGeneration2.EmitBuilders
 
         public MethodInfo MethodInfo { get; }
 
+        public IType DeclaringType => throw new NotSupportedException();
+
         private readonly IType[] parameters;
 
         public EmitMethodInfo(MethodInfo methodInfo, IType returnType, IType[] parameters)

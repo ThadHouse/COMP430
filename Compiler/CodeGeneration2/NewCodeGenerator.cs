@@ -88,7 +88,7 @@ namespace Compiler.CodeGeneration2
 
                 for (int i = 0; i < parameterTypes.Length; i++)
                 {
-                    method.DefineParameter(i + 1, ParameterAttributes.None, syntaxNode.Parameters[i].Name);
+                    method.DefineParameter(i + 2, ParameterAttributes.None, syntaxNode.Parameters[i].Name);
                 }
 
                 store.Methods.Add(type, new IMethodInfo[] { method });

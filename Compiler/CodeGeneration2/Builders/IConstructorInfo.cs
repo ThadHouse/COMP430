@@ -7,5 +7,7 @@ namespace Compiler.CodeGeneration2.Builders
     public interface IConstructorInfo
     {
         IType[] GetParameters();
+
+        IType DeclaringType { get; }
     }
 }

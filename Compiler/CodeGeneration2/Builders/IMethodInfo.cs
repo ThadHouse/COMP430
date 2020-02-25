@@ -12,6 +12,8 @@ namespace Compiler.CodeGeneration2.Builders
 
         string Name { get; }
 
+        IType DeclaringType { get; }
+
         IType[] GetParameters();
     }
 }

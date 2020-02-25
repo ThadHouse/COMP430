@@ -10,6 +10,8 @@ namespace Compiler.CodeGeneration2.EmitBuilders
     {
         public ConstructorInfo ConstructorInfo { get; }
 
+        public IType DeclaringType => throw new NotSupportedException();
+
         private readonly IType[] parameters;
 
         public EmitConstructorInfo(ConstructorInfo constructorInfo, IType[] parameters)

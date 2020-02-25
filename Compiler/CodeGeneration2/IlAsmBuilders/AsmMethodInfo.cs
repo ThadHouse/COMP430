@@ -17,10 +17,13 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         private SRMethodInfo methodInfo { get; }
 
+        public IType DeclaringType { get; }
+
         private readonly IType[] parameters;
 
-        public AsmMethodInfo(SRMethodInfo methodInfo, IType returnType, IType[] parameters)
+        public AsmMethodInfo(IType declaringType, SRMethodInfo methodInfo, IType returnType, IType[] parameters)
         {
+            DeclaringType = declaringType;
             this.methodInfo = methodInfo;
             ReturnType = returnType;
             this.parameters = parameters;

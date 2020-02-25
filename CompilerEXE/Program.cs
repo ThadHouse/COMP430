@@ -9,6 +9,7 @@ using Compiler;
 using Compiler.CodeGeneration2;
 using Compiler.CodeGeneration2.Builders;
 using Compiler.CodeGeneration2.EmitBuilders;
+using Compiler.CodeGeneration2.IlAsmBuilders;
 using Compiler.Parser;
 using Compiler.Parser.Nodes;
 using Compiler.Tokenizer;
@@ -79,12 +80,12 @@ namespace CompilerEXE
                 tracer.AddEpoch($"Parsing {file}");
             }
 
-            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
-            var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
+            //var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
+            //var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-            var emitModuleBuilder = new EmitModuleBuilder(createdModule);
+            var emitModuleBuilder = new AsmModuleBuilder(programName);
 
-            var codeGenerator = new NewCodeGenerator(new EmitBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
+            var codeGenerator = new NewCodeGenerator(new AsmBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
 
             var entryPoint = codeGenerator.GenerateAssembly(rootNode);
 
@@ -95,9 +96,9 @@ namespace CompilerEXE
                 throw new InvalidOperationException("Entry point must be null");
             }
 
-            createdAssembly.SetEntryPoint(((EmitMethodInfo)entryPoint).MethodInfo);
+            //createdAssembly.SetEntryPoint(((EmitMethodInfo)entryPoint).MethodInfo);
 
-            createdAssembly.Save(programName + ".exe");
+            //createdAssembly.Save(programName + ".exe");
 
             tracer.PrintEpochs();
         }

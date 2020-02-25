@@ -29,6 +29,8 @@ namespace Compiler.CodeGeneration2.EmitBuilders
 
         public bool IsArray => Type.IsArray;
 
+        public string ModuleName => throw new NotSupportedException("Module Name is not supported for reflection emit");
+
         private readonly Dictionary<BindingFlags, IFieldInfo[]> fields = new Dictionary<BindingFlags, IFieldInfo[]>();
         private readonly Dictionary<BindingFlags, IMethodInfo[]> methods = new Dictionary<BindingFlags, IMethodInfo[]>();
         private readonly Dictionary<BindingFlags, IConstructorInfo[]> constructors = new Dictionary<BindingFlags, IConstructorInfo[]>();

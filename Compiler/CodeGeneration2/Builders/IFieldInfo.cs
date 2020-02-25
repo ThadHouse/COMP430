@@ -9,5 +9,7 @@ namespace Compiler.CodeGeneration2.Builders
         string Name { get; }
 
         IType FieldType { get; }
+
+        IType DeclaringType { get; }
     }
 }
