@@ -89,6 +89,9 @@ namespace CompilerEXE
 
             var entryPoint = codeGenerator.GenerateAssembly(rootNode);
 
+            var asm = emitModuleBuilder.Emitter.Finalize();
+            File.WriteAllLines($"{programName}.il", asm);
+
             tracer.AddEpoch("Code Generation");
 
             if (entryPoint == null)

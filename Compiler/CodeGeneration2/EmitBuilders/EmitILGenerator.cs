@@ -17,13 +17,13 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             this.generator = generator;
         }
 
-        public ILocalBuilder DeclareLocal(IType type)
+        public ILocalBuilder DeclareLocal(IType type, string name)
         {
             if (type == null)
             {
                 throw new ArgumentNullException(nameof(type));
             }
-            return new EmitLocalBuilder(generator.DeclareLocal(((EmitType)type).Type), type);
+            return new EmitLocalBuilder(generator.DeclareLocal(((EmitType)type).Type), type, name);
         }
 
         public Label DefineLabel()

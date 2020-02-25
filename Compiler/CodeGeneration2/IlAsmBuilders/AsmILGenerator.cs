@@ -15,7 +15,23 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 throw new ArgumentNullException(nameof(type));
             }
-            return $"[{type.ModuleName}]{type.FullName}";
+            if (type.FullName == "System.Void")
+            {
+                return "void";
+            }
+            else if (type.FullName == "System.Int32")
+            {
+                return "int32";
+            }
+            else if (type.FullName == "System.String")
+            {
+                return "string";
+            }
+            else if (type.FullName == "System.IntPtr")
+            {
+                return "native int";
+            }
+            return $"{(type.IsValueType ? "valuetype" : "class")} [{type.ModuleName}]{type.FullName}";
         }
 
         public static void AddFullTypeInstruction(this IList<string> list, IType type, string instruction)
@@ -74,15 +90,48 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             }
             list.Add($"{instruction} {methodInfo.ToMethodSignature()}");
         }
+
+        public static string ToFieldSignature(this IFieldInfo fieldInfo)
+        {
+            if (fieldInfo == null)
+            {
+                throw new ArgumentNullException(nameof(fieldInfo));
+            }
+            return $"{fieldInfo.FieldType.ToFullTypeString()} {fieldInfo.DeclaringType.ToFullTypeString()}::{fieldInfo.Name}";
+        }
+
+        public static void AddFieldInstruction(this IList<string> list, IFieldInfo fieldInfo, string instruction)
+        {
+            if (list == null)
+            {
+                throw new ArgumentNullException(nameof(list));
+            }
+            if (fieldInfo == null)
+            {
+                throw new ArgumentNullException(nameof(fieldInfo));
+            }
+            list.Add($"{instruction} {fieldInfo.ToFieldSignature()}");
+        }
     }
 
     public class AsmILGenerator : IILGenerator
     {
         public List<string> OpCodes { get; } = new List<string>();
+        public List<AsmLocalBuilder> Locals { get; } = new List<AsmLocalBuilder>();
 
-        public ILocalBuilder DeclareLocal(IType type)
+        public AsmILGenerator(bool isEntryPoint = false)
         {
-            throw new NotImplementedException();
+            if (isEntryPoint)
+            {
+                OpCodes.Add(".entrypoint");
+            }
+        }
+
+        public ILocalBuilder DeclareLocal(IType type, string name)
+        {
+            var local = new AsmLocalBuilder(type, Locals.Count, name);
+            Locals.Add(local);
+            return local;
         }
 
         public Label DefineLabel()
@@ -172,12 +221,12 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdcI4(int value)
         {
-            throw new NotImplementedException();
+            OpCodes.Add($"ldc.i4 {value}");
         }
 
         public void EmitLdcI40()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("ldc.i4.0");
         }
 
         public void EmitLdelem(IType type)
@@ -187,12 +236,20 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdfld(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "ldfld");
         }
 
         public void EmitLdflda(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "ldflda");
         }
 
         public void EmitLdftn(IMethodInfo method)
@@ -202,12 +259,20 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdloc(ILocalBuilder local)
         {
-            throw new NotImplementedException();
+            if (local == null)
+            {
+                throw new ArgumentNullException(nameof(local));
+            }
+            OpCodes.Add($"ldloc {local.LocalIndex}");
         }
 
         public void EmitLdloca(ILocalBuilder local)
         {
-            throw new NotImplementedException();
+            if (local == null)
+            {
+                throw new ArgumentNullException(nameof(local));
+            }
+            OpCodes.Add($"ldloca {local.LocalIndex}");
         }
 
         public void EmitLdnull()
@@ -242,7 +307,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitNewobj(IConstructorInfo constructor)
         {
-            throw new NotImplementedException();
+            OpCodes.AddCallInstruction(constructor, "newobj");
         }
 
         public void EmitRet()
@@ -262,12 +327,20 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitStfld(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "stfld");
         }
 
         public void EmitStloc(ILocalBuilder local)
         {
-            throw new NotImplementedException();
+            if (local == null)
+            {
+                throw new ArgumentNullException(nameof(local));
+            }
+            OpCodes.Add($"stloc {local.LocalIndex}");
         }
 
         public void EmitSub()

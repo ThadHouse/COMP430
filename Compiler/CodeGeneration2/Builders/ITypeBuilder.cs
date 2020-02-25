@@ -13,6 +13,6 @@ namespace Compiler.CodeGeneration2.Builders
 
         IConstructorBuilder DefineConstructor(MethodAttributes attributes, IType[] parameters);
 
-        IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters);
+        IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters, bool entryPoint);
     }
 }

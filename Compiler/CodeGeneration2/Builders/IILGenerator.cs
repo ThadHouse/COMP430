@@ -81,7 +81,7 @@ namespace Compiler.CodeGeneration2.Builders
 
         void EmitRet();
 
-        ILocalBuilder DeclareLocal(IType type);
+        ILocalBuilder DeclareLocal(IType type, string name);
 
         void EmitBox(IType type);
 

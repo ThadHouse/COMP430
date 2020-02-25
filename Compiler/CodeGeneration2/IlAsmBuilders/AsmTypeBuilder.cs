@@ -8,13 +8,16 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 {
     public class AsmTypeBuilder : ITypeBuilder
     {
-        private readonly List<IConstructorBuilder> constructors = new List<IConstructorBuilder>();
-        private readonly List<IMethodBuilder> methods = new List<IMethodBuilder>();
-        private readonly List<IFieldBuilder> fields = new List<IFieldBuilder>();
+        public List<AsmConstructorBuilder> TypeConstructors { get; } = new List<AsmConstructorBuilder>();
+        public List<AsmMethodBuilder> TypeMethods { get; } = new List<AsmMethodBuilder>();
+        public List<AsmFieldBuilder> TypeFields { get; } = new List<AsmFieldBuilder>();
+
+        private readonly AsmILEmitter asmEmitter;
 
 
-        public AsmTypeBuilder(string moduleName, string fullName, bool isArray, string baseType)
+        public AsmTypeBuilder(AsmILEmitter asmEmitter, string moduleName, string fullName, bool isArray, string baseType)
         {
+            this.asmEmitter = asmEmitter;
             FullName = fullName;
             IsArray = isArray;
             BaseType = baseType;
@@ -33,27 +36,27 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void CreateTypeInfo()
         {
-            //throw new NotImplementedException();
+            asmEmitter.WriteType(this);
         }
 
         public IConstructorBuilder DefineConstructor(MethodAttributes attributes, IType[] parameters)
         {
             var builder = new AsmConstructorBuilder(this, attributes, parameters);
-            constructors.Add(builder);
+            TypeConstructors.Add(builder);
             return builder;
         }
 
         public IFieldBuilder DefineField(string name, IType fieldType, FieldAttributes attributes)
         {
             var builder = new AsmFieldBuilder(this, fieldType, attributes, name);
-            fields.Add(builder);
+            TypeFields.Add(builder);
             return builder;
         }
 
-        public IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters)
+        public IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters, bool entryPoint)
         {
-            var builder = new AsmMethodBuilder(this, returnType, parameters, attributes, name);
-            methods.Add(builder);
+            var builder = new AsmMethodBuilder(this, returnType, parameters, attributes, name, entryPoint);
+            TypeMethods.Add(builder);
             return builder;
         }
 

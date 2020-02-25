@@ -14,10 +14,13 @@ namespace Compiler.CodeGeneration2.EmitBuilders
 
         public int LocalIndex => LocalBuilder.LocalIndex;
 
-        public EmitLocalBuilder(LocalBuilder localBuilder, IType localType)
+        public string Name { get; }
+
+        public EmitLocalBuilder(LocalBuilder localBuilder, IType localType, string name)
         {
             LocalBuilder = localBuilder;
             LocalType = localType;
+            Name = name;
         }
     }
 }

@@ -16,20 +16,25 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public string Name { get; }
 
-        private readonly (IType type, string name)[] parameters;
+        public IReadOnlyList<(IType type, string name)> MethodParameters => methodParameters;
+
+
         private readonly AsmILGenerator ilGenerator;
+
+        private readonly (IType type, string name)[] methodParameters;
+
         public MethodImplAttributes MethodImplAttributes { get; private set; } = 0;
 
         public IType DeclaringType { get; }
 
-        public AsmMethodBuilder(IType declaringType, IType returnType, IType[] parameters, MethodAttributes methodAttributes, string name)
+        public AsmMethodBuilder(IType declaringType, IType returnType, IType[] parameters, MethodAttributes methodAttributes, string name, bool entryPoint)
         {
             DeclaringType = declaringType;
             ReturnType = returnType;
             Name = name;
             MethodAttributes = methodAttributes;
-            this.parameters = parameters.Select(x => (x, "")).ToArray();
-            ilGenerator = new AsmILGenerator();
+            methodParameters = parameters.Select(x => (x, "")).ToArray();
+            ilGenerator = new AsmILGenerator(entryPoint);
         }
 
         public void DefineParameter(int idx, ParameterAttributes parameterAttributes, string name)
@@ -38,22 +43,29 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 idx--;
             }
-            parameters[idx - 1].name = name;
+            methodParameters[idx - 1].name = name;
         }
 
-        public IILGenerator GetILGenerator()
+        public AsmILGenerator GetILGenerator()
         {
             return ilGenerator;
         }
 
+
         public IType[] GetParameters()
         {
-            return parameters.Select(x => x.type).ToArray();
+            return MethodParameters.Select(x => x.type).ToArray();
         }
 
         public void SetImplementationFlags(MethodImplAttributes attributes)
         {
             MethodImplAttributes = attributes;
         }
+
+        IILGenerator IBaseMethodBuilder.GetILGenerator()
+        {
+            return ilGenerator;
+        }
+
     }
 }

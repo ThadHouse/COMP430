@@ -9,8 +9,14 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 {
     public class AsmConstructorBuilder : IConstructorBuilder
     {
-        private readonly (IType type, string name)[] parameters;
+
+        public IReadOnlyList<(IType type, string name)> MethodParameters => methodParameters;
+
+
         private readonly AsmILGenerator ilGenerator;
+
+        private readonly (IType type, string name)[] methodParameters;
+
         public MethodImplAttributes MethodImplAttributes { get; private set; } = 0;
         public MethodAttributes MethodAttributes { get; }
 
@@ -19,24 +25,29 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
         public AsmConstructorBuilder(IType declaringType, MethodAttributes methodAttributes, IType[] parameters)
         {
             DeclaringType = declaringType;
-            this.parameters = parameters.Select(x => (x, "")).ToArray();
+            methodParameters = parameters.Select(x => (x, "")).ToArray();
             ilGenerator = new AsmILGenerator();
             MethodAttributes = methodAttributes;
         }
 
         public void DefineParameter(int idx, ParameterAttributes parameterAttributes, string name)
         {
-            parameters[idx].name = name;
+            methodParameters[idx].name = name;
         }
 
-        public IILGenerator GetILGenerator()
+        public AsmILGenerator GetILGenerator()
+        {
+            return ilGenerator;
+        }
+
+        IILGenerator IBaseMethodBuilder.GetILGenerator()
         {
             return ilGenerator;
         }
 
         public IType[] GetParameters()
         {
-            return parameters.Select(x => x.type).ToArray();
+            return methodParameters.Select(x => x.type).ToArray();
         }
 
         public void SetImplementationFlags(MethodImplAttributes attributes)

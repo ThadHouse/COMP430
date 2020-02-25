@@ -62,7 +62,7 @@ namespace Compiler.CodeGeneration2
 
                 store.Fields.Add(type, Array.Empty<IFieldInfo>());
 
-                var constructor = type.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, delegateConstructorTypes!);
+                var constructor = type.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, delegateConstructorTypes!);
                 constructor.SetImplementationFlags(MethodImplAttributes.Runtime);
 
                 store.Constructors.Add(type, new IConstructorInfo[] { constructor });
@@ -83,7 +83,7 @@ namespace Compiler.CodeGeneration2
 
                 var returnType = store.TypeDefLookup(syntaxNode.ReturnType);
 
-                var method = type.DefineMethod("Invoke", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.NewSlot, returnType, parameterTypes);
+                var method = type.DefineMethod("Invoke", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.NewSlot, returnType, parameterTypes, false);
                 method.SetImplementationFlags(MethodImplAttributes.Runtime);
 
                 for (int i = 0; i < parameterTypes.Length; i++)
@@ -150,7 +150,7 @@ namespace Compiler.CodeGeneration2
 
                 var returnType = store.TypeDefLookup(method.ReturnType);
 
-                var definedMethod = type.DefineMethod(method.Name, methodAttributes, returnType, parameters);
+                var definedMethod = type.DefineMethod(method.Name, methodAttributes, returnType, parameters, method.IsEntryPoint);
 
                 if (method.IsEntryPoint)
                 {

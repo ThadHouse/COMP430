@@ -10,14 +10,17 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
     {
         public string ModuleName { get; }
 
+        public AsmILEmitter Emitter { get; }
+
         public AsmModuleBuilder(string moduleName)
         {
             ModuleName = moduleName;
+            Emitter = new AsmILEmitter(moduleName);
         }
 
         public ITypeBuilder DefineType(string type, TypeAttributes typeAttributes, Type? baseType = null)
         {
-            return new AsmTypeBuilder(ModuleName, type, false, (baseType != null) ? baseType.FullName : typeof(object).FullName);
+            return new AsmTypeBuilder(Emitter, ModuleName, type, false, (baseType != null) ? baseType.FullName : typeof(object).FullName);
         }
     }
 }

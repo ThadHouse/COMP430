@@ -41,6 +41,10 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
         {
             this.type = type ?? throw new ArgumentNullException(nameof(type));
             ModuleName = type.Module.Name;
+            if (ModuleName.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase) || ModuleName.EndsWith(".exe", StringComparison.InvariantCultureIgnoreCase))
+            {
+                ModuleName = ModuleName.Substring(0, ModuleName.Length - 4);
+            }
             TypeCache.Add(type, this);
         }
 

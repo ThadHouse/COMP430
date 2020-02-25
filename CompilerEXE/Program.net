@@ -1,6 +1,11 @@
 ﻿delegate void myFunc(int a, string b); 
 
 class MyClass {
+    field int x;
+
     method entrypoint void MyFunction() {
+        auto a = new MyClass();
+        a.x = 42;
+        System::Console.WriteLine(a.x);
     }
 }

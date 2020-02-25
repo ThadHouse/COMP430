@@ -38,7 +38,7 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             return new EmitFieldBuilder(TypeBuilder.DefineField(name, ((EmitType)fieldType).Type, attributes), fieldType);
         }
 
-        public IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters)
+        public IMethodBuilder DefineMethod(string name, MethodAttributes attributes, IType returnType, IType[] parameters, bool entryPoint)
         {
             if (returnType == null)
             {

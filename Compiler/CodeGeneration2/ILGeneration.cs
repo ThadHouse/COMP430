@@ -856,7 +856,7 @@ namespace Compiler.CodeGeneration2
                         {
                             TypeCheck(store.Types[type], expressionResultType);
                         }
-                        var loc = generator.DeclareLocal(store.Types[type]);
+                        var loc = generator.DeclareLocal(store.Types[type], vardec.Name);
                         currentMethodInfo.Locals.Add(vardec.Name, loc);
                         generator.EmitStloc(loc);
                     }

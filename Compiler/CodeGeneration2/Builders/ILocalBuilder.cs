@@ -9,5 +9,7 @@ namespace Compiler.CodeGeneration2.Builders
         IType LocalType { get; }
 
         int LocalIndex { get; }
+
+        string Name { get; }
     }
 }
