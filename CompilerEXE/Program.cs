@@ -19,6 +19,51 @@ namespace CompilerEXE
 {
     public class Program
     {
+        static void IlAsmMain(string programName, Assembly[] assemblies, Tracer tracer, RootSyntaxNode rootNode)
+        {
+            var emitModuleBuilder = new AsmModuleBuilder(programName);
+
+            var codeGenerator = new NewCodeGenerator(new AsmBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
+
+            var entryPoint = codeGenerator.GenerateAssembly(rootNode);
+
+
+            if (entryPoint == null)
+            {
+                throw new InvalidOperationException("Entry point must be null");
+            }
+
+            var asm = emitModuleBuilder.Emitter.Finalize();
+            File.WriteAllLines($"{programName}.il", asm);
+
+            tracer.AddEpoch("Code Generation");
+
+        }
+
+        static void EmitMain(string programName, Assembly[] assemblies, Tracer tracer, RootSyntaxNode rootNode)
+        {
+            var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
+            var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
+
+            var emitModuleBuilder = new EmitModuleBuilder(createdModule);
+
+            var codeGenerator = new NewCodeGenerator(new EmitBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
+
+            var entryPoint = codeGenerator.GenerateAssembly(rootNode);
+
+
+            if (entryPoint == null)
+            {
+                throw new InvalidOperationException("Entry point must be null");
+            }
+
+            createdAssembly.SetEntryPoint(((EmitMethodInfo)entryPoint).MethodInfo);
+
+            createdAssembly.Save(programName + ".exe");
+
+            tracer.AddEpoch("Code Generation");
+        }
+
         static void Main(string? programName = null, string[]? args = null)
         {
             var tracer = new Tracer();
@@ -80,28 +125,8 @@ namespace CompilerEXE
                 tracer.AddEpoch($"Parsing {file}");
             }
 
-            //var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
-            //var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
-
-            var emitModuleBuilder = new AsmModuleBuilder(programName);
-
-            var codeGenerator = new NewCodeGenerator(new AsmBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
-
-            var entryPoint = codeGenerator.GenerateAssembly(rootNode);
-
-            var asm = emitModuleBuilder.Emitter.Finalize();
-            File.WriteAllLines($"{programName}.il", asm);
-
-            tracer.AddEpoch("Code Generation");
-
-            if (entryPoint == null)
-            {
-                throw new InvalidOperationException("Entry point must be null");
-            }
-
-            //createdAssembly.SetEntryPoint(((EmitMethodInfo)entryPoint).MethodInfo);
-
-            //createdAssembly.Save(programName + ".exe");
+            EmitMain(programName + "Emit", assemblies, tracer, rootNode);
+            IlAsmMain(programName, assemblies, tracer, rootNode);
 
             tracer.PrintEpochs();
         }

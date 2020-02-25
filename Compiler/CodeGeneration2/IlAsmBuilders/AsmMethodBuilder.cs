@@ -39,10 +39,6 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void DefineParameter(int idx, ParameterAttributes parameterAttributes, string name)
         {
-            if (!IsStatic)
-            {
-                idx--;
-            }
             methodParameters[idx - 1].name = name;
         }
 

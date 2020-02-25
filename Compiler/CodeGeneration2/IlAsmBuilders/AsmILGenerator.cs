@@ -15,23 +15,15 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 throw new ArgumentNullException(nameof(type));
             }
-            if (type.FullName == "System.Void")
+            return type.FullName switch
             {
-                return "void";
-            }
-            else if (type.FullName == "System.Int32")
-            {
-                return "int32";
-            }
-            else if (type.FullName == "System.String")
-            {
-                return "string";
-            }
-            else if (type.FullName == "System.IntPtr")
-            {
-                return "native int";
-            }
-            return $"{(type.IsValueType ? "valuetype" : "class")} [{type.ModuleName}]{type.FullName}";
+                "System.Void" => "void",
+                "System.Int32" => "int32",
+                "System.String" => "string",
+                "System.IntPtr" => "native int",
+                "System.Boolean" => "bool",
+                _ => $"{(type.IsValueType ? "valuetype" : "class")} [{type.ModuleName}]{type.FullName}",
+            };
         }
 
         public static void AddFullTypeInstruction(this IList<string> list, IType type, string instruction)

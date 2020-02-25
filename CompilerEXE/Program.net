@@ -6,6 +6,6 @@ class MyClass {
     method entrypoint void MyFunction() {
         auto a = new MyClass();
         a.x = 42;
-        System::Console.WriteLine(a.x);
+        System::Console.WriteLine(a.x.ToString());
     }
 }

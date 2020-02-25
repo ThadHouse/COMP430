@@ -492,6 +492,12 @@ namespace Compiler.CodeGeneration2
                     }
                 }
             }
+            else if (methodCall.Expression is VariableAccessExpression vae)
+            {
+                isStatic = false;
+                //HandleVariableAccess(vae, true, ref callTarget);
+                WriteExpression(vae, true, true, ref callTarget);
+            }
             else
             {
                 throw new InvalidOperationException("Op not suppored");
@@ -612,10 +618,10 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, ref IType? expressionResultType)
+        private void HandleVariableAccess(VariableAccessExpression varAccess, bool isRight, bool isMethodAccess, ref IType? expressionResultType)
         {
             IType? callTarget = null;
-            WriteExpression(varAccess.Expression, true, false, ref callTarget);
+            WriteExpression(varAccess.Expression, true, isMethodAccess, ref callTarget);
 
             if (callTarget == null)
             {
@@ -643,7 +649,14 @@ namespace Compiler.CodeGeneration2
 
             if (isRight)
             {
-                generator.EmitLdfld(methodToCall);
+                if (isMethodAccess && methodToCall.FieldType.IsValueType)
+                {
+                    generator.EmitLdflda(methodToCall);
+                }
+                else
+                {
+                    generator.EmitLdfld(methodToCall);
+                }
             }
             else
             {
@@ -745,7 +758,7 @@ namespace Compiler.CodeGeneration2
                     HandleNewConstructor(newConstructor, ref expressionResultType);
                     break;
                 case VariableAccessExpression varAccess:
-                    HandleVariableAccess(varAccess, isRight, ref expressionResultType);
+                    HandleVariableAccess(varAccess, isRight, willBeMethodCall, ref expressionResultType);
                     break;
 
                 case NewArrExpression newArr:
