@@ -128,10 +128,14 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             }
 
             lines.Add("\t\t.locals init(");
-            foreach (var local in locals)
+            ILocalBuilder local;
+            for (int i = 0; i < locals.Count - 1; i++)
             {
-                lines.Add($"\t\t\t{local.LocalType.ToFullTypeString()} {local.Name}");
+                local = locals[i];
+                lines.Add($"\t\t\t{local.LocalType.ToFullTypeString()} {local.Name},");
             }
+            local = locals[locals.Count - 1];
+            lines.Add($"\t\t\t{local.LocalType.ToFullTypeString()} {local.Name}");
             lines.Add("\t\t)");
         }
 

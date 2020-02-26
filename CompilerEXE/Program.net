@@ -4,6 +4,18 @@ class MyClass {
     field int x;
 
     method entrypoint void MyFunction() {
+        int i = 0;
+        while (i < 5) {
+            System::Console.WriteLine(i);
+            i = i + 1;
+        }
+        if (i > 5) {
+            System::Console.WriteLine("In the if");
+        } else {
+            System::Console.WriteLine("In the Else");
+        }
+        System::Console.Write("Finished Loop: ");
+        System::Console.WriteLine(i);
         auto a = new MyClass();
         a.x = 42;
         System::Console.WriteLine(a.x.ToString());

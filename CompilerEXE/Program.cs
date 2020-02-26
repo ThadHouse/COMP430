@@ -125,7 +125,7 @@ namespace CompilerEXE
                 tracer.AddEpoch($"Parsing {file}");
             }
 
-            EmitMain(programName + "Emit", assemblies, tracer, rootNode);
+            //EmitMain(programName + "Emit", assemblies, tracer, rootNode);
             IlAsmMain(programName, assemblies, tracer, rootNode);
 
             tracer.PrintEpochs();

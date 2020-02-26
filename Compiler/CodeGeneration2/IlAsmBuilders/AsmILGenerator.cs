@@ -43,7 +43,9 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             }
             var methodParameters = methodInfo.GetParameters();
             var parameters = methodParameters.Length > 0 ? methodParameters.Select(x => x.ToFullTypeString()).Aggregate((x, y) => $"{x}, {y}") : "";
-            return $"{methodInfo.ReturnType.ToFullTypeString()} {methodInfo.DeclaringType.ToFullTypeString()}::{methodInfo.Name}({parameters})";
+
+            var instancestring = methodInfo.IsStatic ? "" : "instance ";
+            return $"{instancestring} {methodInfo.ReturnType.ToFullTypeString()} {methodInfo.DeclaringType.ToFullTypeString()}::{methodInfo.Name}({parameters})";
         }
 
         public static void AddCallInstruction(this IList<string> list, IMethodInfo methodInfo, string instruction)
@@ -109,6 +111,9 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
     public class AsmILGenerator : IILGenerator
     {
         public List<string> OpCodes { get; } = new List<string>();
+
+        int labelCount = 0;
+
         public List<AsmLocalBuilder> Locals { get; } = new List<AsmLocalBuilder>();
 
         public AsmILGenerator(bool isEntryPoint = false)
@@ -126,9 +131,9 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             return local;
         }
 
-        public Label DefineLabel()
+        public ILabel DefineLabel()
         {
-            throw new NotImplementedException();
+            return new AsmLabel(labelCount++);
         }
 
         public void EmitAdd()
@@ -141,19 +146,34 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             OpCodes.AddFullTypeInstruction(type, "box");
         }
 
-        public void EmitBr(Label label)
+        public void EmitBr(ILabel label)
         {
-            throw new NotImplementedException();
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            var idx = ((AsmLabel)label).Idx;
+            OpCodes.Add($"br Label_{idx}");
         }
 
-        public void EmitBrfalse(Label label)
+        public void EmitBrfalse(ILabel label)
         {
-            throw new NotImplementedException();
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            var idx = ((AsmLabel)label).Idx;
+            OpCodes.Add($"brfalse Label_{idx}");
         }
 
-        public void EmitBrtrue(Label label)
+        public void EmitBrtrue(ILabel label)
         {
-            throw new NotImplementedException();
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            var idx = ((AsmLabel)label).Idx;
+            OpCodes.Add($"brtrue Label_{idx}");
         }
 
         public void EmitCall(IMethodInfo methodInfo)
@@ -168,17 +188,17 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitCeq()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("ceq");
         }
 
         public void EmitCgt()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("cgt");
         }
 
         public void EmitClt()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("clt");
         }
 
         public void EmitConstructorCall(IConstructorInfo constructorInfo)
@@ -188,17 +208,17 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitDiv()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("div");
         }
 
         public void EmitDup()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("dup");
         }
 
         public void EmitFalse()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("Ldc.i4.0");
         }
 
         public void EmitLdarg(short idx)
@@ -274,7 +294,8 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdstr(string value)
         {
-            throw new NotImplementedException();
+            // TODO escaping is going to break this
+            OpCodes.Add($"ldstr \"{value}\"");
         }
 
         public void EmitLdthis()
@@ -345,9 +366,14 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             throw new NotImplementedException();
         }
 
-        public void MarkLabel(Label label)
+        public void MarkLabel(ILabel label)
         {
-            throw new NotImplementedException();
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            var idx = ((AsmLabel)label).Idx;
+            OpCodes.Add($"Label_{idx}:");
         }
     }
 }

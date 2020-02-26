@@ -26,9 +26,9 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             return new EmitLocalBuilder(generator.DeclareLocal(((EmitType)type).Type), type, name);
         }
 
-        public Label DefineLabel()
+        public ILabel DefineLabel()
         {
-            return generator.DefineLabel();
+            return new EmitLabel(generator.DefineLabel());
         }
 
         public void EmitAdd()
@@ -45,19 +45,31 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             generator.Emit(OpCodes.Box, ((EmitType)type).Type);
         }
 
-        public void EmitBr(Label label)
+        public void EmitBr(ILabel label)
         {
-            generator.Emit(OpCodes.Br, label);
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            generator.Emit(OpCodes.Br, ((EmitLabel)label).Label);
         }
 
-        public void EmitBrfalse(Label label)
+        public void EmitBrfalse(ILabel label)
         {
-            generator.Emit(OpCodes.Brfalse, label);
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            generator.Emit(OpCodes.Brfalse, ((EmitLabel)label).Label);
         }
 
-        public void EmitBrtrue(Label label)
+        public void EmitBrtrue(ILabel label)
         {
-            generator.Emit(OpCodes.Brtrue, label);
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            generator.Emit(OpCodes.Brtrue, ((EmitLabel)label).Label);
         }
 
         public void EmitCall(IMethodInfo method)
@@ -317,9 +329,13 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             generator.Emit(OpCodes.Ldc_I4_1);
         }
 
-        public void MarkLabel(Label label)
+        public void MarkLabel(ILabel label)
         {
-            generator.MarkLabel(label);
+            if (label == null)
+            {
+                throw new ArgumentNullException(nameof(label));
+            }
+            generator.MarkLabel(((EmitLabel)label).Label);
         }
     }
 }

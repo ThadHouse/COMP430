@@ -69,15 +69,15 @@ namespace Compiler.CodeGeneration2.Builders
 
         void EmitFalse();
 
-        Label DefineLabel();
+        ILabel DefineLabel();
 
-        void MarkLabel(Label label);
+        void MarkLabel(ILabel label);
 
-        void EmitBr(Label label);
+        void EmitBr(ILabel label);
 
-        void EmitBrtrue(Label label);
+        void EmitBrtrue(ILabel label);
 
-        void EmitBrfalse(Label label);
+        void EmitBrfalse(ILabel label);
 
         void EmitRet();
 
