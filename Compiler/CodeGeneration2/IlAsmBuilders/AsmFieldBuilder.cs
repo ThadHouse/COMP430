@@ -16,12 +16,15 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public IType DeclaringType { get; }
 
+        public bool IsStatic { get; }
+
         public AsmFieldBuilder(IType declaringType, IType fieldType, FieldAttributes fieldAttributes, string name)
         {
             DeclaringType = declaringType;
             Name = name;
             FieldType = fieldType;
             FieldAttributes = fieldAttributes;
+            IsStatic = fieldAttributes.HasFlag(FieldAttributes.Static);
         }
     }
 }

@@ -375,5 +375,20 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             var idx = ((AsmLabel)label).Idx;
             OpCodes.Add($"Label_{idx}:");
         }
+
+        public void EmitStsfld(IFieldInfo field)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EmitLdsfld(IFieldInfo field)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EmitLdsflda(IFieldInfo field)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

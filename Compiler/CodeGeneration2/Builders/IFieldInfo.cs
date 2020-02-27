@@ -10,6 +10,8 @@ namespace Compiler.CodeGeneration2.Builders
 
         IType FieldType { get; }
 
+        bool IsStatic { get; }
+
         IType DeclaringType { get; }
     }
 }

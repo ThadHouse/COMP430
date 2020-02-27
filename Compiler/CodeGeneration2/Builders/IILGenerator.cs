@@ -90,5 +90,11 @@ namespace Compiler.CodeGeneration2.Builders
         void EmitLdelem(IType type);
 
         void EmitStelem(IType type);
+
+        void EmitStsfld(IFieldInfo field);
+
+        void EmitLdsfld(IFieldInfo field);
+
+        void EmitLdsflda(IFieldInfo field);
     }
 }

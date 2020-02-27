@@ -208,6 +208,24 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             generator.Emit(OpCodes.Ldnull);
         }
 
+        public void EmitLdsfld(IFieldInfo field)
+        {
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            generator.Emit(OpCodes.Ldsfld, ((EmitFieldInfo)field).FieldInfo);
+        }
+
+        public void EmitLdsflda(IFieldInfo field)
+        {
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            generator.Emit(OpCodes.Ldsflda, ((EmitFieldInfo)field).FieldInfo);
+        }
+
         public void EmitLdstr(string value)
         {
             generator.Emit(OpCodes.Ldstr, value);
@@ -317,6 +335,15 @@ namespace Compiler.CodeGeneration2.EmitBuilders
                     }
                     break;
             }
+        }
+
+        public void EmitStsfld(IFieldInfo field)
+        {
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            generator.Emit(OpCodes.Stsfld, ((EmitFieldInfo)field).FieldInfo);
         }
 
         public void EmitSub()

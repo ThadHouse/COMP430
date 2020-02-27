@@ -16,6 +16,8 @@ namespace Compiler.CodeGeneration2.EmitBuilders
 
         public IType DeclaringType => throw new NotSupportedException();
 
+        public bool IsStatic => FieldInfo.IsStatic;
+
         public EmitFieldInfo(FieldInfo fieldInfo, IType fieldType)
         {
             FieldType = fieldType;

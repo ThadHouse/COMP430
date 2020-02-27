@@ -70,7 +70,8 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             {
                 return value;
             }
-            value = type.GetFields(flags).Select(x => new AsmFieldInfo(this, x.Name, GetTypeFromCache(x.FieldType))).ToArray();
+            bool isStatic = flags.HasFlag(BindingFlags.Static);
+            value = type.GetFields(flags).Select(x => new AsmFieldInfo(this, x.Name, GetTypeFromCache(x.FieldType), isStatic)).ToArray();
             fields.Add(flags, value);
             return value;
         }

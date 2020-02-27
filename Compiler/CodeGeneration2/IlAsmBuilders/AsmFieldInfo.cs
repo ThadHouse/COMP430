@@ -14,11 +14,14 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public IType DeclaringType { get; }
 
-        public AsmFieldInfo(IType declaringType, string name, IType fieldType)
+        public bool IsStatic { get; }
+
+        public AsmFieldInfo(IType declaringType, string name, IType fieldType, bool isStatic)
         {
             DeclaringType = declaringType;
             FieldType = fieldType;
             Name = name;
+            IsStatic = isStatic;
         }
     }
 }

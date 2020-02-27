@@ -4,6 +4,9 @@ class MyClass {
     field int x;
 
     method entrypoint void MyFunction() {
+        System::Console.WriteLine(56);
+        #System::Console.Out.WriteLine("Hello World from Out!");
+
         int i = 0;
         while (i < 5) {
             System::Console.WriteLine(i);
@@ -23,5 +26,9 @@ class MyClass {
 
     method MyClass[] returnArray() {
         return null;
+    }
+
+    method int returnInt() {
+        return 42;
     }
 }

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using Compiler.CodeGeneration2.Builders;
+using Compiler.CodeGeneration2.Exceptions;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
 using Compiler.TypeChecker;
@@ -79,7 +80,7 @@ namespace Compiler.CodeGeneration2
                     var paramType = store.TypeDefLookup(syntaxNode.Parameters[i].Type);
                     if (syntaxNode.Parameters[i].IsRef)
                     {
-                        throw new InvalidOperationException("Ref types are not supported");
+                        throw new RefTypeException("Ref types are not supported");
                     }
                     parameterTypes[i] = paramType;
                 }
@@ -144,7 +145,7 @@ namespace Compiler.CodeGeneration2
                     var tpe = store.TypeDefLookup(x.Type);
                     if (x.IsRef)
                     {
-                        throw new InvalidOperationException("Ref types are not supported");
+                        throw new RefTypeException("Ref types are not supported");
                     }
                     return tpe;
                 }).ToArray();
@@ -159,7 +160,7 @@ namespace Compiler.CodeGeneration2
                 {
                     if (entryPoint != null)
                     {
-                        throw new InvalidOperationException("Can only have 1 entry point");
+                        throw new EntryPointException("Can only have 1 entry point");
                     }
                     entryPoint = definedMethod;
                 }
@@ -216,7 +217,7 @@ namespace Compiler.CodeGeneration2
                     var tpe = store.TypeDefLookup(x.Type);
                     if (x.IsRef)
                     {
-                        throw new InvalidOperationException("Ref types are not supported");
+                        throw new RefTypeException("Ref types are not supported");
                     }
                     return tpe;
                 }).ToArray();

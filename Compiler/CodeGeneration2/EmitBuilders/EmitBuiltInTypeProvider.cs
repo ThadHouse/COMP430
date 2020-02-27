@@ -37,7 +37,7 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             foreach (var type in store.Types.Values)
             {
 
-                var fieldInfos = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+                var fieldInfos = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
                 store.Fields.Add(type, fieldInfos);
 

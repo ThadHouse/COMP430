@@ -51,6 +51,8 @@ namespace CompilerEXE
 
             var entryPoint = codeGenerator.GenerateAssembly(rootNodes);
 
+            //            System.Console.Out.WriteLine("Hello World from Out!");
+
 
             if (entryPoint == null)
             {

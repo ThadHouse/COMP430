@@ -32,12 +32,12 @@ namespace Compiler.TypeChecker
 
             if (rightType.FullName != leftType.FullName)
             {
-                throw new InvalidOperationException($"Types must be equal: {leftType.FullName} - {rightType.FullName}");
+                throw new TypeCheckException($"Types must be equal: {leftType.FullName} - {rightType.FullName}");
             }
 
             if (leftType.FullName != typeof(int).FullName)
             {
-                throw new InvalidOperationException($"Cannot perform arithmatic on {leftType.FullName}");
+                throw new TypeCheckException($"Cannot perform arithmatic on {leftType.FullName}");
             }
         }
 
@@ -51,21 +51,17 @@ namespace Compiler.TypeChecker
             // A null right type is void
             if (rightType == null)
             {
-                if (VoidType == null)
-                {
-                    throw new InvalidOperationException("Void type must be set");
-                }
                 rightType = VoidType;
             }
 
-            if (rightType.FullName == "System.Void" && !leftType.IsValueType)
+            if (rightType.FullName == typeof(void).FullName && !leftType.IsValueType)
             {
                 return;
             }
 
             if (!leftType.IsAssignableFrom(rightType))
             {
-                throw new InvalidOperationException($"Invalid Type Assignment, attempting to assign {rightType.FullName} to {leftType.FullName}");
+                throw new TypeCheckException($"Invalid Type Assignment, attempting to assign {rightType.FullName} to {leftType.FullName}");
             }
         }
 

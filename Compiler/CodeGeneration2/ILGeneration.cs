@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using Compiler.CodeGeneration2.Builders;
+using Compiler.CodeGeneration2.Exceptions;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
 using Compiler.Tokenizer.Tokens;
@@ -77,7 +78,7 @@ namespace Compiler.CodeGeneration2
 
                     if (arrayType == null)
                     {
-                        throw new InvalidOperationException("Array type must have been found");
+                        throw new MissingTypeException("Array type must have been found");
                     }
 
                     // Use the runtime provided Get() method to determine the inner type of the array
@@ -105,7 +106,7 @@ namespace Compiler.CodeGeneration2
                     }
                     else
                     {
-                        throw new InvalidOperationException("Not supported");
+                        throw new MissingVariableDefinitionException("Not supported");
                     }
                 case VariableAccessExpression varAccess:
                     {
@@ -114,7 +115,7 @@ namespace Compiler.CodeGeneration2
 
                         if (callTarget == null)
                         {
-                            throw new InvalidOperationException("No target for field access");
+                            throw new MissingTypeException("No target for field access");
                         }
 
                         IFieldInfo? fieldToCall = null;
@@ -133,14 +134,14 @@ namespace Compiler.CodeGeneration2
 
                         if (fieldToCall == null)
                         {
-                            throw new InvalidOperationException("Field target not found");
+                            throw new MissingTypeException("Field not found");
                         }
 
                         expressionResultType = fieldToCall.FieldType;
                         return () => generator.EmitStfld(fieldToCall);
                     }
                 default:
-                    throw new InvalidOperationException("No other type of operations supported as lvalue");
+                    throw new LValueOperationException("No other type of operations supported as lvalue");
             }
         }
 
@@ -155,7 +156,7 @@ namespace Compiler.CodeGeneration2
             WriteExpression(callNode.Expression, true, false, ref expressionResultType);
             if (expressionResultType == null)
             {
-                throw new InvalidOperationException("Expression must return something here");
+                throw new InvalidMethodParameterException("Method call parameter expression cannot return void");
             }
             return expressionResultType;
         }
@@ -165,7 +166,7 @@ namespace Compiler.CodeGeneration2
             {
                 if (!isRight && willBeMethodCall)
                 {
-                    throw new InvalidOperationException("Cannot have a method call on the left");
+                    throw new InvalidLValueException("Cannot have a method call on the left");
                 }
 
 
@@ -209,28 +210,53 @@ namespace Compiler.CodeGeneration2
                 }
                 else if (currentMethodInfo.Fields.TryGetValue(varNode.Name, out var fieldVar))
                 {
-                    if (currentMethodInfo.IsStatic)
+                    if (fieldVar.IsStatic)
                     {
-                        throw new InvalidOperationException("Invalid to do this on static");
-                    }
-
-                    if (isRight)
-                    {
-                        generator.EmitLdthis();
-                        if (willBeMethodCall && fieldVar.FieldType.IsValueType)
+                        // If field is static, it can always be accessed
+                        if (isRight)
                         {
-                            generator.EmitLdflda(fieldVar);
+                            if (willBeMethodCall && fieldVar.FieldType.IsValueType)
+                            {
+                                generator.EmitLdsflda(fieldVar);
+                            }
+                            else
+                            {
+                                generator.EmitLdsfld(fieldVar);
+                            }
+
+
                         }
                         else
                         {
-                            generator.EmitLdfld(fieldVar);
+                            generator.EmitStsfld(fieldVar);
                         }
-
-
                     }
                     else
                     {
-                        generator.EmitStfld(fieldVar);
+
+                        if (currentMethodInfo.IsStatic)
+                        {
+                            throw new InstanceFieldAccessException("Invalid to access instance field in static method");
+                        }
+
+                        if (isRight)
+                        {
+                            generator.EmitLdthis();
+                            if (willBeMethodCall && fieldVar.FieldType.IsValueType)
+                            {
+                                generator.EmitLdflda(fieldVar);
+                            }
+                            else
+                            {
+                                generator.EmitLdfld(fieldVar);
+                            }
+
+
+                        }
+                        else
+                        {
+                            generator.EmitStfld(fieldVar);
+                        }
                     }
                     expressionResultType = fieldVar.FieldType;
                 }
@@ -246,35 +272,35 @@ namespace Compiler.CodeGeneration2
 
                         if (expressionResultType == null)
                         {
-                            throw new InvalidOperationException("Expression result type cannot be null here");
+                            throw new TypeCheckException("Expression result type cannot be null here, must have a type to assign delegate to");
                         }
 
                         if (!method.IsStatic && currentMethodInfo.IsStatic)
                         {
-                            throw new InvalidOperationException("Cannot grab a direct reference to a instance delegate");
+                            throw new MethodReferenceException("Cannot grab a direct reference to a instance delegate");
                         }
 
                         if (expressionResultType.IsAssignableFrom(store.Types["System.MulticastDelegate"]))
                         {
-                            throw new InvalidOperationException("Target must be a delegate");
+                            throw new MethodReferenceException("Target must be a delegate");
                         }
 
                         var rightParameters = store.MethodParameters[method];
                         var leftPossibleMethods = store.Methods[expressionResultType].Where(x => x.Name == "Invoke").ToArray();
                         if (leftPossibleMethods.Length != 1)
                         {
-                            throw new InvalidOperationException("Must only have 1 invoke method on a delegate");
+                            throw new MethodReferenceException("Must only have 1 invoke method on a delegate");
                         }
                         var leftParameters = store.MethodParameters[leftPossibleMethods[0]];
 
                         if (!leftParameters.SequenceEqual(rightParameters))
                         {
-                            throw new InvalidOperationException("Method and delegate types do not match");
+                            throw new MethodReferenceException("Method and delegate parameter types do not match");
                         }
 
                         if (method.ReturnType != leftPossibleMethods[0].ReturnType)
                         {
-                            throw new InvalidOperationException("Method and delegate return types do not match");
+                            throw new MethodReferenceException("Method and delegate return types do not match");
                         }
 
                         // Find the constructor
@@ -306,7 +332,14 @@ namespace Compiler.CodeGeneration2
                         ;
                     }
 
-                    throw new InvalidOperationException("Not supported");
+                    // If we get here, we are likely looking up a type. Try to look up the type
+                    if (store.Types.TryGetValue(varNode.Name, out var typeLookup))
+                    {
+                        expressionResultType = typeLookup;
+                        return;
+                    }
+
+                    throw new UnknownExpressionException($"Odd variable lookup: {varNode.Name}");
                 }
 
 
@@ -320,7 +353,7 @@ namespace Compiler.CodeGeneration2
 
             if (callTarget == null)
             {
-                throw new InvalidOperationException("Method ref target cannot be null");
+                throw new MethodReferenceException("Method ref target cannot be null");
             }
 
             foreach (var method in store.Methods![callTarget])
@@ -332,36 +365,36 @@ namespace Compiler.CodeGeneration2
 
                 if (expressionResultType == null)
                 {
-                    throw new InvalidOperationException("Expression result type cannot be null here");
+                    throw new TypeCheckException("Expression result type cannot be null here, must have a delegate type to assign to");
                 }
 
                 if (expressionResultType.IsAssignableFrom(store.Types["System.MulticastDelegate"]))
                 {
-                    throw new InvalidOperationException("Target must be a delegate");
+                    throw new MethodReferenceException("Target must be a delegate");
                 }
 
                 var rightParameters = store.MethodParameters[method];
                 var leftPossibleMethods = store.Methods[expressionResultType].Where(x => x.Name == "Invoke").ToArray();
                 if (leftPossibleMethods.Length != 1)
                 {
-                    throw new InvalidOperationException("Must only have 1 invoke method on a delegate");
+                    throw new MethodReferenceException("Must only have 1 invoke method on a delegate");
                 }
                 var leftParameters = store.MethodParameters[leftPossibleMethods[0]];
 
                 if (!leftParameters.SequenceEqual(rightParameters))
                 {
-                    throw new InvalidOperationException("Method and delegate types do not match");
+                    throw new MethodReferenceException("Method and delegate parameter types do not match");
                 }
 
                 if (method.ReturnType != leftPossibleMethods[0].ReturnType)
                 {
-                    throw new InvalidOperationException("Method and delegate return types do not match");
+                    throw new MethodReferenceException("Method and delegate return types do not match");
                 }
 
 
                 if (method.IsStatic)
                 {
-                    throw new InvalidOperationException("Cannot grab an instance reference to a static delegate");
+                    throw new MethodReferenceException("Cannot grab an instance reference to a static delegate");
                 }
 
                 // Find the constructor
@@ -389,7 +422,7 @@ namespace Compiler.CodeGeneration2
                 ;
             }
 
-            throw new InvalidOperationException("Not supported");
+            throw new UnknownExpressionException($"Odd method reference lookup");
         }
 
         private void HandleExpressionOpExpression(ExpressionOpExpressionSyntaxNode expOpEx, ref IType? expressionResultType)
@@ -627,44 +660,44 @@ namespace Compiler.CodeGeneration2
 
             if (callTarget == null)
             {
-                throw new InvalidOperationException("No target for field access");
+                throw new InstanceFieldAccessException("No target for field access");
             }
 
-            IFieldInfo? methodToCall = null;
+            IFieldInfo? fieldToAccess = null;
 
-            if (store.Fields!.TryGetValue(callTarget, out var localMethodList))
+            if (store.Fields!.TryGetValue(callTarget, out var localFieldList))
             {
-                foreach (var localMethod in localMethodList)
+                foreach (var localField in localFieldList)
                 {
-                    if (localMethod.Name == varAccess.Name)
+                    if (localField.Name == varAccess.Name)
                     {
-                        methodToCall = localMethod;
+                        fieldToAccess = localField;
                         break;
                     }
                 }
             }
 
-            if (methodToCall == null)
+            if (fieldToAccess == null)
             {
-                throw new InvalidOperationException("Field target not found");
+                throw new InstanceFieldAccessException("Field not found");
             }
 
             if (isRight)
             {
-                if (isMethodAccess && methodToCall.FieldType.IsValueType)
+                if (isMethodAccess && fieldToAccess.FieldType.IsValueType)
                 {
-                    generator.EmitLdflda(methodToCall);
+                    generator.EmitLdflda(fieldToAccess);
                 }
                 else
                 {
-                    generator.EmitLdfld(methodToCall);
+                    generator.EmitLdfld(fieldToAccess);
                 }
             }
             else
             {
-                generator.EmitStfld(methodToCall);
+                generator.EmitStfld(fieldToAccess);
             }
-            expressionResultType = methodToCall.FieldType;
+            expressionResultType = fieldToAccess.FieldType;
         }
 
         private void HandleArrayExpression(ArrayIndexExpression arrIdx, bool isRight, ref IType? expressionResultType)
@@ -674,12 +707,12 @@ namespace Compiler.CodeGeneration2
 
             if (callTarget == null)
             {
-                throw new InvalidOperationException("No target for array access");
+                throw new MissingTypeException("No target for array access");
             }
 
             if (!callTarget.IsArray)
             {
-                throw new InvalidOperationException("Target must be an array");
+                throw new TypeCheckException("Target must be an array");
             }
 
             IType? lengthType = null;
@@ -734,28 +767,28 @@ namespace Compiler.CodeGeneration2
                 case MethodReferenceExpression methodRef:
                     if (!isRight)
                     {
-                        throw new InvalidOperationException("Method ref must be on the right");
+                        throw new InvalidLValueException("Method ref must be on the right");
                     }
                     HandleMethodReference(methodRef, ref expressionResultType);
                     break;
                 case ExpressionOpExpressionSyntaxNode expOpEx:
                     if (!isRight)
                     {
-                        throw new InvalidOperationException("Exp op Exp must be on the right");
+                        throw new InvalidLValueException("Exp op Exp must be on the right");
                     }
                     HandleExpressionOpExpression(expOpEx, ref expressionResultType);
                     break;
                 case MethodCallExpression methodCall:
                     if (!isRight)
                     {
-                        throw new InvalidOperationException("Method Call must be on the right");
+                        throw new InvalidLValueException("Method Call must be on the right");
                     }
                     HandleMethodCall(methodCall, ref expressionResultType);
                     break;
                 case NewConstructorExpression newConstructor:
                     if (!isRight)
                     {
-                        throw new InvalidOperationException("New must be on the right");
+                        throw new InvalidLValueException("New must be on the right");
                     }
                     HandleNewConstructor(newConstructor, ref expressionResultType);
                     break;
@@ -766,7 +799,7 @@ namespace Compiler.CodeGeneration2
                 case NewArrExpression newArr:
                     if (!isRight)
                     {
-                        throw new InvalidOperationException("newarr must be on the right");
+                        throw new InvalidLValueException("newarr must be on the right");
                     }
                     HandleNewArray(newArr, ref expressionResultType);
                     break;
@@ -774,7 +807,7 @@ namespace Compiler.CodeGeneration2
                     HandleArrayExpression(arrIdx, isRight, ref expressionResultType);
                     break;
                 default:
-                    throw new InvalidOperationException("Expression not supported");
+                    throw new UnknownExpressionException("Expression not supported");
             }
 
 
@@ -861,9 +894,10 @@ namespace Compiler.CodeGeneration2
                         var type = vardec.Type;
                         if (type == null)
                         {
+                            // This is where type inferrence is handled
                             if (expressionResultType == null)
                             {
-                                throw new InvalidOperationException("Failure to type infer");
+                                throw new TypeInferrenceException("Failure to type infer");
                             }
                             type = expressionResultType.FullName;
                         }
