@@ -26,26 +26,30 @@ namespace Compiler.CodeGeneration2
             this.tracer = tracer;
         }
 
-        private GeneratedData CreateTypesToGenerate(RootSyntaxNode rootNode, CodeGenerationStore store)
+        private GeneratedData CreateTypesToGenerate(IReadOnlyList<ImmutableRootSyntaxNode> rootNodes, CodeGenerationStore store)
         {
             var toGenerate = new GeneratedData();
 
-            foreach (var node in rootNode.Delegates)
+            foreach (var rootNode in rootNodes)
             {
-                var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
 
-                toGenerate.Delegates.Add(type, node);
+                foreach (var node in rootNode.Delegates)
+                {
+                    var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
 
-                store.Types.Add(node.Name, type);
-            }
+                    toGenerate.Delegates.Add(type, node);
 
-            foreach (var node in rootNode.Classes)
-            {
-                var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
+                    store.Types.Add(node.Name, type);
+                }
 
-                store.Types.Add(node.Name, type);
+                foreach (var node in rootNode.Classes)
+                {
+                    var type = moduleBuilder.DefineType(node.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
 
-                toGenerate.Classes.Add(type, node);
+                    store.Types.Add(node.Name, type);
+
+                    toGenerate.Classes.Add(type, node);
+                }
             }
 
             return toGenerate;
@@ -97,7 +101,7 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private IReadOnlyList<StatementSyntaxNode> GenerateClassFields(ITypeBuilder type, IList<FieldSyntaxNode> fields, CodeGenerationStore store,
+        private IReadOnlyList<StatementSyntaxNode> GenerateClassFields(ITypeBuilder type, IReadOnlyList<FieldSyntaxNode> fields, CodeGenerationStore store,
             ISyntaxNode syntaxNode)
         {
             var definedFields = new List<IFieldInfo>();
@@ -120,7 +124,7 @@ namespace Compiler.CodeGeneration2
             return initExpressions;
         }
 
-        private void GenerateClassMethods(ITypeBuilder type, IList<MethodSyntaxNode> methods, CodeGenerationStore store,
+        private void GenerateClassMethods(ITypeBuilder type, IReadOnlyList<MethodSyntaxNode> methods, CodeGenerationStore store,
             Dictionary<IMethodBuilder, MethodSyntaxNode> methodsDictionary, ref IMethodInfo? entryPoint)
         {
             var definedMethods = new List<IMethodInfo>();
@@ -177,35 +181,36 @@ namespace Compiler.CodeGeneration2
             }
         }
 
-        private void GenerateClassConstructors(ITypeBuilder type, IList<ConstructorSyntaxNode> constructors, CodeGenerationStore store,
+        private IReadOnlyList<ConstructorSyntaxNode> GenerateClassConstructors(ITypeBuilder type, IReadOnlyList<ConstructorSyntaxNode> constructors, CodeGenerationStore store,
             IReadOnlyList<StatementSyntaxNode> fieldInitializers,
             Dictionary<IConstructorBuilder, ConstructorSyntaxNode> constructorsDictionary, ISyntaxNode parent)
         {
+            var initialConstructors = new List<ConstructorSyntaxNode>(constructors);
+            var mutatedConstructors = new List<ConstructorSyntaxNode>();
+
             var definedConstructors = new List<IConstructorInfo>();
             store.Constructors.Add(type, definedConstructors);
 
             if (constructors.Count == 0)
             {
                 var statementList = new List<StatementSyntaxNode>();
-                constructors.Add(new ConstructorSyntaxNode(parent, Array.Empty<ParameterDefinitionSyntaxNode>(), statementList));
+                initialConstructors.Add(new ConstructorSyntaxNode(parent, Array.Empty<ParameterDefinitionSyntaxNode>(), statementList));
             }
 
-            foreach (var constructor in constructors)
+            foreach (var constructor in initialConstructors)
             {
-                var oldStatements = new List<StatementSyntaxNode>(constructor.Statements);
-                constructor.Statements.Clear();
-                foreach (var toAdd in fieldInitializers)
+                var newStatements = new List<StatementSyntaxNode>(fieldInitializers);
+                foreach (var toAdd in constructor.Statements)
                 {
-                    constructor.Statements.Add(toAdd);
+                    newStatements.Add(toAdd);
                 }
-                foreach (var toAdd in oldStatements)
-                {
-                    constructor.Statements.Add(toAdd);
-                }
+
+                var mutatedConstructor = constructor.MutateStatements(newStatements);
+                mutatedConstructors.Add(mutatedConstructor);
 
                 var methodAttributes = MethodAttributes.Public;
 
-                var parameters = constructor.Parameters.Select(x =>
+                var parameters = mutatedConstructor.Parameters.Select(x =>
                 {
                     var tpe = store.TypeDefLookup(x.Type);
                     if (x.IsRef)
@@ -220,29 +225,39 @@ namespace Compiler.CodeGeneration2
                 definedConstructors.Add(definedConstructor);
 
                 store.ConstructorParameters.Add(definedConstructor, parameters);
-                constructorsDictionary.Add(definedConstructor, constructor);
+                constructorsDictionary.Add(definedConstructor, mutatedConstructor);
 
                 int offset = 0;
 
-                for (int i = 0; i < constructor.Parameters.Count; i++)
+                for (int i = 0; i < mutatedConstructor.Parameters.Count; i++)
                 {
-                    definedConstructor.DefineParameter(i + 1 + offset, ParameterAttributes.None, constructor.Parameters[i].Name);
+                    definedConstructor.DefineParameter(i + 1 + offset, ParameterAttributes.None, mutatedConstructor.Parameters[i].Name);
                 }
             }
+            return mutatedConstructors;
         }
 
         private void GenerateClassPlaceholders(GeneratedData toGenerate, CodeGenerationStore store, ref IMethodInfo? entryPoint)
         {
+            var patchedClasses = new Dictionary<ITypeBuilder, ImmutableClassSyntaxNode>();
+
             foreach (var classToGenerate in toGenerate.Classes)
             {
                 var type = classToGenerate.Key;
                 var node = classToGenerate.Value;
                 var fieldsToInitialize = GenerateClassFields(classToGenerate.Key, node.Fields, store, node);
 
-                GenerateClassConstructors(type, node.Constructors, store, fieldsToInitialize, toGenerate.Constructors, node);
+                var patchedConstructors = GenerateClassConstructors(type, node.Constructors, store, fieldsToInitialize, toGenerate.Constructors, node);
+                patchedClasses.Add(type, node.MutateConstructors(patchedConstructors));
 
                 GenerateClassMethods(type, node.Methods, store, toGenerate.Methods, ref entryPoint);
             }
+
+            foreach (var patchedClass in patchedClasses)
+            {
+                toGenerate.Classes[patchedClass.Key] = patchedClass.Value;
+            }
+            ;
         }
 
         private void GenerateMethod(ILGeneration generator, IReadOnlyList<StatementSyntaxNode> statements)
@@ -317,18 +332,16 @@ namespace Compiler.CodeGeneration2
 
                     var generation = new ILGeneration(generator, store, methodInfo, delegateConstructorTypes!, baseConstructorInfo!);
 
-
-
-                    GenerateMethod(generation, (IReadOnlyList<StatementSyntaxNode>)toGenerate.Constructors[constructor].Statements);
+                    GenerateMethod(generation, toGenerate.Constructors[constructor].Statements);
                 }
             }
         }
 
-        public IMethodInfo? GenerateAssembly(RootSyntaxNode rootNode)
+        public IMethodInfo? GenerateAssembly(IReadOnlyList<ImmutableRootSyntaxNode> rootNodes)
         {
-            if (rootNode == null)
+            if (rootNodes == null)
             {
-                throw new ArgumentNullException(nameof(rootNode));
+                throw new ArgumentNullException(nameof(rootNodes));
             }
 
             var store = new CodeGenerationStore();
@@ -337,7 +350,7 @@ namespace Compiler.CodeGeneration2
 
             tracer.AddEpoch("Dependent Type Load");
 
-            var toGenerate = CreateTypesToGenerate(rootNode, store);
+            var toGenerate = CreateTypesToGenerate(rootNodes, store);
 
             tracer.AddEpoch("Generate Types");
 

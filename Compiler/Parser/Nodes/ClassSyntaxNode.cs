@@ -6,17 +6,23 @@ namespace Compiler.Parser.Nodes
 {
     public class ClassSyntaxNode : TypeDefinitionNode
     {
-        public IList<FieldSyntaxNode> Fields { get; } = new List<FieldSyntaxNode>();
+        public List<FieldSyntaxNode> Fields { get; } = new List<FieldSyntaxNode>();
 
-        public IList<MethodSyntaxNode> Methods { get; } = new List<MethodSyntaxNode>();
+        public List<MethodSyntaxNode> Methods { get; } = new List<MethodSyntaxNode>();
 
-        public IList<ConstructorSyntaxNode> Constructors { get; } = new List<ConstructorSyntaxNode>();
+        public List<ConstructorSyntaxNode> Constructors { get; } = new List<ConstructorSyntaxNode>();
 
         public string Name { get; }
 
         public ClassSyntaxNode(ISyntaxNode parent, string name) : base(parent)
         {
             Name = name;
+        }
+
+        public ImmutableClassSyntaxNode ToImmutableNode()
+        {
+            return new ImmutableClassSyntaxNode(Parent!, Name,
+                Fields, Methods, Constructors);
         }
     }
 }

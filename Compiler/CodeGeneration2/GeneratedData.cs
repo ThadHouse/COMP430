@@ -6,7 +6,7 @@ namespace Compiler.CodeGeneration2
 {
     public class GeneratedData
     {
-        public Dictionary<ITypeBuilder, ClassSyntaxNode> Classes { get; } = new Dictionary<ITypeBuilder, ClassSyntaxNode>();
+        public Dictionary<ITypeBuilder, ImmutableClassSyntaxNode> Classes { get; } = new Dictionary<ITypeBuilder, ImmutableClassSyntaxNode>();
         public Dictionary<ITypeBuilder, DelegateSyntaxNode> Delegates { get; } = new Dictionary<ITypeBuilder, DelegateSyntaxNode>();
 
         public Dictionary<IMethodBuilder, MethodSyntaxNode> Methods { get; } = new Dictionary<IMethodBuilder, MethodSyntaxNode>();

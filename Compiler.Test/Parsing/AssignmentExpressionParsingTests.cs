@@ -32,7 +32,6 @@ namespace Compiler.Test.Parsing
         };
 
         private readonly IParser parser = new SimpleParser();
-        private readonly RootSyntaxNode rootNode = new RootSyntaxNode();
 
         private ReadOnlySpan<IToken> CombineTokens(IReadOnlyList<IToken> tokens)
         {
@@ -42,7 +41,7 @@ namespace Compiler.Test.Parsing
             return list.ToArray();
         }
 
-        private StatementSyntaxNode GetStatement()
+        private StatementSyntaxNode GetStatement(ImmutableRootSyntaxNode rootNode)
         {
             Assert.Equal(1, rootNode.Classes.Count);
             Assert.Equal(0, rootNode.Delegates.Count);
@@ -77,8 +76,8 @@ namespace Compiler.Test.Parsing
             };
 
             var combined = CombineTokens(list);
-            parser.ParseTokens(combined, rootNode);
-            var statement = GetStatement();
+            var rootNode = parser.ParseTokens(combined);
+            var statement = GetStatement(rootNode);
             var equals = Assert.IsType<ExpressionEqualsExpressionSyntaxNode>(statement);
             var lhs = Assert.IsType<VariableSyntaxNode>(equals.Left);
             var rhs = Assert.IsType<ArrayIndexExpression>(equals.Right);
@@ -104,8 +103,8 @@ namespace Compiler.Test.Parsing
             };
 
             var combined = CombineTokens(list);
-            parser.ParseTokens(combined, rootNode);
-            var statement = GetStatement();
+            var rootNode = parser.ParseTokens(combined);
+            var statement = GetStatement(rootNode);
             var equals = Assert.IsType<ExpressionEqualsExpressionSyntaxNode>(statement);
             var lhs = Assert.IsType<ArrayIndexExpression>(equals.Left);
             var rhs = Assert.IsType<VariableSyntaxNode>(equals.Right);

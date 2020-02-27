@@ -19,7 +19,7 @@ namespace CompilerEXE
 {
     public class Program
     {
-        static void IlAsmMain(string programName, Assembly[] assemblies, Tracer tracer, RootSyntaxNode rootNode)
+        static void IlAsmMain(string programName, Assembly[] assemblies, Tracer tracer, IReadOnlyList<ImmutableRootSyntaxNode> rootNode)
         {
             var emitModuleBuilder = new AsmModuleBuilder(programName, assemblies);
 
@@ -40,7 +40,7 @@ namespace CompilerEXE
 
         }
 
-        static void EmitMain(string programName, Assembly[] assemblies, Tracer tracer, RootSyntaxNode rootNode)
+        static void EmitMain(string programName, Assembly[] assemblies, Tracer tracer, IReadOnlyList<ImmutableRootSyntaxNode> rootNodes)
         {
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
@@ -49,7 +49,7 @@ namespace CompilerEXE
 
             var codeGenerator = new NewCodeGenerator(emitModuleBuilder, tracer);
 
-            var entryPoint = codeGenerator.GenerateAssembly(rootNode);
+            var entryPoint = codeGenerator.GenerateAssembly(rootNodes);
 
 
             if (entryPoint == null)
@@ -110,23 +110,25 @@ namespace CompilerEXE
 
             tracer.AddEpoch("Initialization");
 
-            var rootNode = new RootSyntaxNode();
-
             var tokenizer = new SimpleTokenizer();
             var parser = new SimpleParser();
 
+            var rootNodes = new List<ImmutableRootSyntaxNode>();
 
             foreach (var file in args)
             {
                 var code = File.ReadAllText(file);
                 var fileTokens = tokenizer.EnumerateTokens(code.AsSpan());
                 tracer.AddEpoch($"Tokenizing {file}");
-                parser.ParseTokens(fileTokens, rootNode);
+                var immutableNode = parser.ParseTokens(fileTokens);
+                rootNodes.Add(immutableNode);
                 tracer.AddEpoch($"Parsing {file}");
             }
 
-            //EmitMain(programName + "Emit", assemblies, tracer, rootNode);
-            IlAsmMain(programName, assemblies, tracer, rootNode);
+            EmitMain(programName + "Emit", assemblies, tracer, rootNodes);
+            IlAsmMain(programName, assemblies, tracer, rootNodes);
+
+
 
             tracer.PrintEpochs();
         }
