@@ -20,4 +20,8 @@ class MyClass {
         a.x = 42;
         System::Console.WriteLine(a.x.ToString());
     }
+
+    method MyClass[] returnArray() {
+        return null;
+    }
 }

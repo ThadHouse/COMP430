@@ -289,7 +289,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdnull()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("ldnull");
         }
 
         public void EmitLdstr(string value)

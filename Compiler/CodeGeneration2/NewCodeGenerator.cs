@@ -7,6 +7,7 @@ using System.Text;
 using Compiler.CodeGeneration2.Builders;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
+using Compiler.TypeChecker;
 
 namespace Compiler.CodeGeneration2
 {
@@ -14,7 +15,7 @@ namespace Compiler.CodeGeneration2
     public class NewCodeGenerator
     {
         private IType[]? delegateConstructorTypes;
-        private IType? voidType;
+        private SimpleTypeChecker? typeChecker;
         private IConstructorInfo? baseConstructorInfo;
         private readonly IModuleBuilder moduleBuilder;
         private readonly Tracer tracer;
@@ -298,7 +299,7 @@ namespace Compiler.CodeGeneration2
                     var methodInfo = new CurrentMethodInfo(type, method.ReturnType, method.IsStatic,
                         parameters, fields);
 
-                    var generation = new ILGeneration(generator, store, methodInfo, delegateConstructorTypes!, baseConstructorInfo!);
+                    var generation = new ILGeneration(generator, store, methodInfo, delegateConstructorTypes!, baseConstructorInfo!, typeChecker!);
 
 
 
@@ -327,10 +328,10 @@ namespace Compiler.CodeGeneration2
 
 
 
-                    var methodInfo = new CurrentMethodInfo(type, voidType!, false,
+                    var methodInfo = new CurrentMethodInfo(type, typeChecker!.VoidType, false,
                         parameters, fields);
 
-                    var generation = new ILGeneration(generator, store, methodInfo, delegateConstructorTypes!, baseConstructorInfo!);
+                    var generation = new ILGeneration(generator, store, methodInfo, delegateConstructorTypes!, baseConstructorInfo!, typeChecker!);
 
                     GenerateMethod(generation, toGenerate.Constructors[constructor].Statements);
                 }
@@ -346,7 +347,11 @@ namespace Compiler.CodeGeneration2
 
             var store = new CodeGenerationStore();
 
+            IType voidType;
+
             (delegateConstructorTypes, voidType, baseConstructorInfo) = moduleBuilder.BuiltInTypeProvider.GenerateAssemblyTypes(store);
+
+            typeChecker = new SimpleTypeChecker(voidType);
 
             tracer.AddEpoch("Dependent Type Load");
 

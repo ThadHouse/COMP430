@@ -9,11 +9,16 @@ using Compiler.Parser.Nodes;
 
 namespace Compiler.TypeChecker
 {
-    public class SimpleTypeChecker : ITypeChecker
+    public class SimpleTypeChecker
     {
-        public static IType? VoidType { get; set; }
+        public SimpleTypeChecker(IType voidType)
+        {
+            VoidType = voidType;
+        }
 
-        public static void CheckCanArithmaticTypeOperations(IType? leftType, IType? rightType)
+        public IType VoidType { get; }
+
+        public void CheckCanArithmaticTypeOperations(IType? leftType, IType? rightType)
         {
             if (leftType == null)
             {
@@ -36,7 +41,7 @@ namespace Compiler.TypeChecker
             }
         }
 
-        public static void TypeCheck(IType? leftType, IType? rightType)
+        public void TypeCheck(IType? leftType, IType? rightType)
         {
             if (leftType == null)
             {
@@ -53,72 +58,17 @@ namespace Compiler.TypeChecker
                 rightType = VoidType;
             }
 
+            if (rightType.FullName == "System.Void" && !leftType.IsValueType)
+            {
+                return;
+            }
+
             if (!leftType.IsAssignableFrom(rightType))
             {
                 throw new InvalidOperationException($"Invalid Type Assignment, attempting to assign {rightType.FullName} to {leftType.FullName}");
             }
         }
 
-        public IReadOnlyList<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)> GenerateTypes(RootSyntaxNode typeRoot, ModuleBuilder moduleBuilder)
-        {
-            if (typeRoot == null)
-            {
-                throw new ArgumentNullException(nameof(typeRoot));
-            }
 
-            if (moduleBuilder == null)
-            {
-                throw new ArgumentNullException(nameof(moduleBuilder));
-            }
-
-            var generatedTypeStore = new HashSet<string>();
-
-            var generatedTypes = new List<(TypeBuilder typeBuilder, TypeDefinitionNode syntax)>();
-
-            var baseClassTypes = typeof(object).Assembly.GetTypes().Where(x => x.IsPublic).Select(x => x.FullName);
-
-            foreach (var cls in typeRoot.Classes)
-            {
-                if (generatedTypeStore.Contains(cls.Name))
-                {
-                    throw new Exception("Type already exists");
-                }
-
-                generatedTypeStore.Add(cls.Name);
-
-                var generatedType = moduleBuilder.DefineType(cls.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout);
-                generatedTypes.Add((generatedType, cls));
-
-                // Ensure it doesn't exist in the BCL
-
-                if (baseClassTypes.Contains(cls.Name))
-                {
-                    throw new Exception("Type exists in BCL");
-                }
-            }
-
-            foreach (var cls in typeRoot.Delegates)
-            {
-                if (generatedTypeStore.Contains(cls.Name))
-                {
-                    throw new Exception("Type already exists");
-                }
-
-                generatedTypeStore.Add(cls.Name);
-
-                var generatedType = moduleBuilder.DefineType(cls.Name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.AutoLayout, typeof(MulticastDelegate));
-
-                generatedTypes.Add((generatedType, cls));
-
-                // Ensure it doesn't exist in the BCL
-
-                if (baseClassTypes.Contains(cls.Name))
-                {
-                    throw new Exception("Type exists in BCL");
-                }
-            }
-
-            return generatedTypes;
-        }
     }
 }

@@ -91,7 +91,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public IType MakeArrayType()
         {
-            throw new NotSupportedException("Making arrays of a defined type is not supported");
+            return new AsmBuiltArrayType(this);
         }
     }
 }

@@ -8,7 +8,7 @@ using Compiler.CodeGeneration2.Builders;
 using Compiler.Parser.Nodes;
 using Compiler.Parser.Nodes.Statements;
 using Compiler.Tokenizer.Tokens;
-using static Compiler.TypeChecker.SimpleTypeChecker;
+using Compiler.TypeChecker;
 
 namespace Compiler.CodeGeneration2
 {
@@ -47,15 +47,17 @@ namespace Compiler.CodeGeneration2
         private readonly CurrentMethodInfo currentMethodInfo;
         private readonly IType[] delegateConstructorTypes;
         private readonly IConstructorInfo baseConstructorCall;
+        private readonly SimpleTypeChecker typeChecker;
 
         public ILGeneration(IILGenerator generator, CodeGenerationStore store, CurrentMethodInfo currentMethodInfo,
-            IType[] delegateConstructorTypes, IConstructorInfo baseConstructorCall)
+            IType[] delegateConstructorTypes, IConstructorInfo baseConstructorCall, SimpleTypeChecker typeChecker)
         {
             this.generator = generator;
             this.store = store;
             this.currentMethodInfo = currentMethodInfo;
             this.delegateConstructorTypes = delegateConstructorTypes;
             this.baseConstructorCall = baseConstructorCall;
+            this.typeChecker = typeChecker;
         }
 
         // x = a + b
@@ -71,7 +73,7 @@ namespace Compiler.CodeGeneration2
                     WriteExpression(arrIdx.Expression, true, false, ref arrayType);
                     WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
 
-                    TypeCheck(store.Types["System.Int32"], lengthType);
+                    typeChecker.TypeCheck(store.Types["System.Int32"], lengthType);
 
                     if (arrayType == null)
                     {
@@ -397,38 +399,38 @@ namespace Compiler.CodeGeneration2
 
             WriteExpression(expOpEx.Left, true, false, ref leftType);
             WriteExpression(expOpEx.Right, true, false, ref rightType);
-            TypeCheck(leftType, rightType);
+            typeChecker.TypeCheck(leftType, rightType);
 
             switch (expOpEx.Operation.Operation)
             {
                 case SupportedOperation.Add:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitAdd();
                     break;
                 case SupportedOperation.Subtract:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitSub();
                     break;
                 case SupportedOperation.Multiply:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitMul();
                     break;
                 case SupportedOperation.Divide:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitDiv();
                     break;
                 case SupportedOperation.LessThen:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitClt();
                     expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.GreaterThen:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCgt();
                     expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.NotEqual:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCeq();
                     // This is how to invert a bool
                     generator.EmitLdcI40();
@@ -436,12 +438,12 @@ namespace Compiler.CodeGeneration2
                     expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.Equals:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCeq();
                     expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.LessThenOrEqualTo:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitCgt();
                     // This is how to invert a bool
                     generator.EmitLdcI40();
@@ -449,7 +451,7 @@ namespace Compiler.CodeGeneration2
                     expressionResultType = store.Types["System.Boolean"];
                     return;
                 case SupportedOperation.GreaterThenOrEqualTo:
-                    CheckCanArithmaticTypeOperations(leftType, rightType);
+                    typeChecker.CheckCanArithmaticTypeOperations(leftType, rightType);
                     generator.EmitClt();
                     // This is how to invert a bool
                     generator.EmitLdcI40();
@@ -606,7 +608,7 @@ namespace Compiler.CodeGeneration2
 
                 IType? sizeResultType = null;
                 WriteExpression(newConstructor.Expression, true, false, ref sizeResultType);
-                TypeCheck(store.Types["System.Int32"], sizeResultType);
+                typeChecker.TypeCheck(store.Types["System.Int32"], sizeResultType);
 
                 generator.EmitNewarr(callTarget);
 
@@ -683,7 +685,7 @@ namespace Compiler.CodeGeneration2
             IType? lengthType = null;
             WriteExpression(arrIdx.LengthExpression, true, false, ref lengthType);
 
-            TypeCheck(store.Types["System.Int32"], lengthType);
+            typeChecker.TypeCheck(store.Types["System.Int32"], lengthType);
 
             expressionResultType = callTarget.GetMethod("Get").ReturnType;
 
@@ -801,7 +803,7 @@ namespace Compiler.CodeGeneration2
             IType? expressionResultType = null;
             WriteExpression(statement.Expression, true, false, ref expressionResultType);
             // Result of expression must be a bool
-            TypeCheck(store.Types["System.Boolean"], expressionResultType);
+            typeChecker.TypeCheck(store.Types["System.Boolean"], expressionResultType);
             generator.EmitBrtrue(topLabel);
 
 
@@ -815,7 +817,7 @@ namespace Compiler.CodeGeneration2
             IType? expressionResultType = null;
             WriteExpression(statement.Expression, true, false, ref expressionResultType);
             // Result of expression must be a bool
-            TypeCheck(store.Types["System.Boolean"], expressionResultType);
+            typeChecker.TypeCheck(store.Types["System.Boolean"], expressionResultType);
             generator.EmitBrfalse(elseLabel);
 
             // Emit top statements
@@ -845,7 +847,7 @@ namespace Compiler.CodeGeneration2
                 case ReturnStatementNode ret:
                     expressionResultType = currentMethodInfo.ReturnType;
                     WriteExpression(ret.Expression, true, false, ref expressionResultType);
-                    TypeCheck(currentMethodInfo.ReturnType, expressionResultType);
+                    typeChecker.TypeCheck(currentMethodInfo.ReturnType, expressionResultType);
                     generator.EmitRet();
                     return true;
                 case VariableDeclarationNode vardec:
@@ -867,7 +869,7 @@ namespace Compiler.CodeGeneration2
                         }
                         else
                         {
-                            TypeCheck(store.Types[type], expressionResultType);
+                            typeChecker.TypeCheck(store.Types[type], expressionResultType);
                         }
                         var loc = generator.DeclareLocal(store.Types[type], vardec.Name);
                         currentMethodInfo.Locals.Add(vardec.Name, loc);
@@ -881,7 +883,7 @@ namespace Compiler.CodeGeneration2
                         var lastOp = WriteLValueExpression(expEqualsExp.Left, out var leftType);
 
                         WriteExpression(expEqualsExp.Right, true, false, ref rightType);
-                        TypeCheck(leftType, rightType);
+                        typeChecker.TypeCheck(leftType, rightType);
 
                         lastOp();
                     }
