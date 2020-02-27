@@ -11,10 +11,13 @@ namespace Compiler.CodeGeneration2.EmitBuilders
     {
         private readonly ModuleBuilder moduleBuilder;
 
-        public EmitModuleBuilder(ModuleBuilder moduleBuilder)
+        public EmitModuleBuilder(ModuleBuilder moduleBuilder, Assembly[] dependentAssemblies)
         {
             this.moduleBuilder = moduleBuilder;
+            BuiltInTypeProvider = new EmitBuiltInTypeProvider(dependentAssemblies);
         }
+
+        public IBuiltInTypeProvider BuiltInTypeProvider { get; }
 
         public ITypeBuilder DefineType(string type, TypeAttributes typeAttributes, Type? baseType = null)
         {

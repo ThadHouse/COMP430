@@ -21,9 +21,9 @@ namespace CompilerEXE
     {
         static void IlAsmMain(string programName, Assembly[] assemblies, Tracer tracer, RootSyntaxNode rootNode)
         {
-            var emitModuleBuilder = new AsmModuleBuilder(programName);
+            var emitModuleBuilder = new AsmModuleBuilder(programName, assemblies);
 
-            var codeGenerator = new NewCodeGenerator(new AsmBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
+            var codeGenerator = new NewCodeGenerator(emitModuleBuilder, tracer);
 
             var entryPoint = codeGenerator.GenerateAssembly(rootNode);
 
@@ -45,9 +45,9 @@ namespace CompilerEXE
             var createdAssembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(programName), AssemblyBuilderAccess.RunAndSave);
             var createdModule = createdAssembly.DefineDynamicModule(programName, programName + ".exe");
 
-            var emitModuleBuilder = new EmitModuleBuilder(createdModule);
+            var emitModuleBuilder = new EmitModuleBuilder(createdModule, assemblies);
 
-            var codeGenerator = new NewCodeGenerator(new EmitBuiltInTypeProvider(assemblies), emitModuleBuilder, tracer);
+            var codeGenerator = new NewCodeGenerator(emitModuleBuilder, tracer);
 
             var entryPoint = codeGenerator.GenerateAssembly(rootNode);
 

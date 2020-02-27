@@ -14,16 +14,14 @@ namespace Compiler.CodeGeneration2
     public class NewCodeGenerator
     {
         private IType[]? delegateConstructorTypes;
-        private readonly IBuiltInTypeProvider builtInProvider;
         private IType? voidType;
         private IConstructorInfo? baseConstructorInfo;
         private readonly IModuleBuilder moduleBuilder;
         private readonly Tracer tracer;
 
-        public NewCodeGenerator(IBuiltInTypeProvider builtInProvider, IModuleBuilder moduleBuilder,
+        public NewCodeGenerator(IModuleBuilder moduleBuilder,
             Tracer tracer)
         {
-            this.builtInProvider = builtInProvider;
             this.moduleBuilder = moduleBuilder;
             this.tracer = tracer;
         }
@@ -335,7 +333,7 @@ namespace Compiler.CodeGeneration2
 
             var store = new CodeGenerationStore();
 
-            (delegateConstructorTypes, voidType, baseConstructorInfo) = builtInProvider.GenerateAssemblyTypes(store);
+            (delegateConstructorTypes, voidType, baseConstructorInfo) = moduleBuilder.BuiltInTypeProvider.GenerateAssemblyTypes(store);
 
             tracer.AddEpoch("Dependent Type Load");
 

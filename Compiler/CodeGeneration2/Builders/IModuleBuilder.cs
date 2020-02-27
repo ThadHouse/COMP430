@@ -8,5 +8,7 @@ namespace Compiler.CodeGeneration2.Builders
     public interface IModuleBuilder
     {
         ITypeBuilder DefineType(string type, TypeAttributes typeAttributes, Type? baseType = null);
+
+        IBuiltInTypeProvider BuiltInTypeProvider { get; }
     }
 }

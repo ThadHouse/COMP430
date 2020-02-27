@@ -12,10 +12,13 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public AsmILEmitter Emitter { get; }
 
-        public AsmModuleBuilder(string moduleName)
+        public IBuiltInTypeProvider BuiltInTypeProvider { get; }
+
+        public AsmModuleBuilder(string moduleName, Assembly[] dependentAssemblies)
         {
             ModuleName = moduleName;
             Emitter = new AsmILEmitter(moduleName);
+            BuiltInTypeProvider = new AsmBuiltInTypeProvider(dependentAssemblies);
         }
 
         public ITypeBuilder DefineType(string type, TypeAttributes typeAttributes, Type? baseType = null)
