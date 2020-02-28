@@ -5,7 +5,7 @@ class MyClass {
 
     method entrypoint void MyFunction() {
         System::Console.WriteLine(56);
-        #System::Console.Out.WriteLine("Hello World from Out!");
+        #System::Console.Out.WriteLine("Hello World \nfrom Out!");
 
         int i = 0;
         while (i < 5) {
@@ -13,7 +13,7 @@ class MyClass {
             i = i + 1;
         }
         if (i > 5) {
-            System::Console.WriteLine("In the if");
+            System::Console.WriteLine("In the \n if");
         } else {
             System::Console.WriteLine("In the Else");
         }
