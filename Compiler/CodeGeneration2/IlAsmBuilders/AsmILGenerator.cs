@@ -223,12 +223,12 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdarg(short idx)
         {
-            throw new NotImplementedException();
+            OpCodes.Add($"ldarg {idx}");
         }
 
         public void EmitLdarga(short idx)
         {
-            throw new NotImplementedException();
+            OpCodes.Add($"ldarga {idx}");
         }
 
         public void EmitLdcI4(int value)
@@ -243,7 +243,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdelem(IType type)
         {
-            throw new NotImplementedException();
+            OpCodes.AddFullTypeInstruction(type, "ldelem");
         }
 
         public void EmitLdfld(IFieldInfo field)
@@ -266,7 +266,7 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdftn(IMethodInfo method)
         {
-            throw new NotImplementedException();
+            OpCodes.AddCallInstruction(method, "ldftn");
         }
 
         public void EmitLdloc(ILocalBuilder local)
@@ -305,17 +305,17 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitLdvirtftn(IMethodInfo method)
         {
-            throw new NotImplementedException();
+            OpCodes.AddCallInstruction(method, "ldvirtftn");
         }
 
         public void EmitMul()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("mul");
         }
 
         public void EmitNewarr(IType type)
         {
-            throw new NotImplementedException();
+            OpCodes.AddFullTypeInstruction(type, "newarr");
         }
 
         public void EmitNewobj(IConstructorInfo constructor)
@@ -330,12 +330,12 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitStarg(short idx)
         {
-            throw new NotImplementedException();
+            OpCodes.Add($"starg {idx}");
         }
 
         public void EmitStelem(IType type)
         {
-            throw new NotImplementedException();
+            OpCodes.AddFullTypeInstruction(type, "stelem");
         }
 
         public void EmitStfld(IFieldInfo field)
@@ -358,12 +358,15 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitSub()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("sub");
         }
 
         public void EmitTrue()
         {
-            throw new NotImplementedException();
+            OpCodes.Add("ldc.i4.1");
+
+            int @int = 42;
+            GC.KeepAlive(@int);
         }
 
         public void MarkLabel(ILabel label)
@@ -378,17 +381,29 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
 
         public void EmitStsfld(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "stsfld");
         }
 
         public void EmitLdsfld(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "ldsfld");
         }
 
         public void EmitLdsflda(IFieldInfo field)
         {
-            throw new NotImplementedException();
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            OpCodes.AddFieldInstruction(field, "ldsflda");
         }
     }
 }
