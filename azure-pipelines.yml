@@ -8,61 +8,64 @@ trigger:
 
 name: $(BuildDefinitionName)_$(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)
 
-pool:
-  vmImage: 'windows-latest'
+jobs:
+  - job: Windows
 
-variables:
-  buildConfiguration: 'Release'
+    pool:
+      vmImage: 'windows-latest'
 
-steps:
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
-    versioningScheme: byBuildNumber
-    arguments: '--configuration $(buildConfiguration)'
-  displayName: 'dotnet build $(buildConfiguration)'
+    variables:
+      buildConfiguration: 'Release'
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: test
-    arguments: --configuration $(BuildConfiguration) --collect:"XPlat Code Coverage" -- RunConfiguration.DisableAppDomain=true
-  displayName: Run Tests
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        versioningScheme: byBuildNumber
+        arguments: '--configuration $(buildConfiguration)'
+      displayName: 'dotnet build $(buildConfiguration)'
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: custom
-    custom: tool
-    arguments: install --tool-path . dotnet-reportgenerator-globaltool
-  displayName: Install ReportGenerator tool
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: test
+        arguments: --configuration $(BuildConfiguration) --collect:"XPlat Code Coverage" -- RunConfiguration.DisableAppDomain=true
+      displayName: Run Tests
 
-- script: reportgenerator -reports:$(Agent.TempDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/coverlet/reports -reporttypes:"Cobertura"
-  displayName: Create reports
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: custom
+        custom: tool
+        arguments: install --tool-path . dotnet-reportgenerator-globaltool
+      displayName: Install ReportGenerator tool
 
-- task: PublishCodeCoverageResults@1
-  displayName: 'Publish code coverage'
-  inputs:
-    codeCoverageTool: Cobertura
-    summaryFileLocation: $(Build.SourcesDirectory)/coverlet/reports/Cobertura.xml
+    - script: reportgenerator -reports:$(Agent.TempDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/coverlet/reports -reporttypes:"Cobertura"
+      displayName: Create reports
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'pack'
-    versioningScheme: byBuildNumber
-    outputDir: $(System.DefaultWorkingDirectory)/nupkg
-    arguments: '--configuration $(buildConfiguration)'
-    verbosityPack: 'Normal'
-  displayName: 'dotnet pack $(buildConfiguration)'
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+        codeCoverageTool: Cobertura
+        summaryFileLocation: $(Build.SourcesDirectory)/coverlet/reports/Cobertura.xml
 
-- publish: $(System.DefaultWorkingDirectory)/nupkg
-  artifact: Packages
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'pack'
+        versioningScheme: byBuildNumber
+        outputDir: $(System.DefaultWorkingDirectory)/nupkg
+        arguments: '--configuration $(buildConfiguration)'
+        verbosityPack: 'Normal'
+      displayName: 'dotnet pack $(buildConfiguration)'
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: custom
-    custom: tool
-    arguments: install --tool-path . dotnet-format
-  displayName: Install dotnet-format
+    - publish: $(System.DefaultWorkingDirectory)/nupkg
+      artifact: Packages
 
-- script: dotnet-format --check --dry-run
-  displayName: Check formatting
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: custom
+        custom: tool
+        arguments: install --tool-path . dotnet-format
+      displayName: Install dotnet-format
+
+    - script: dotnet-format --check --dry-run
+      displayName: Check formatting
 
