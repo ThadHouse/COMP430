@@ -124,7 +124,7 @@ jobs:
         arguments: install --tool-path . dotnet-format
       displayName: Install dotnet-format
 
-    - script: dotnet-format --check --dry-run
+    - script: dotnet format --check --dry-run
       displayName: Check formatting
 
   - job: Mac
@@ -183,5 +183,5 @@ jobs:
         arguments: install --tool-path . dotnet-format
       displayName: Install dotnet-format
 
-    - script: dotnet-format --check --dry-run
+    - script: dotnet format --check --dry-run
       displayName: Check formatting
