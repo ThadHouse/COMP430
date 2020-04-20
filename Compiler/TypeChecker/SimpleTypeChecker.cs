@@ -41,6 +41,19 @@ namespace Compiler.TypeChecker
             }
         }
 
+        public void AssertTypeIsNotVoid(IType type)
+        {
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type), "Type cannot be null");
+            }
+
+            if (type.FullName == "System.Void")
+            {
+                throw new TypeCheckException("Type cannot be void here");
+            }
+        }
+
         public void TypeCheck(IType? leftType, IType? rightType)
         {
             if (leftType == null)

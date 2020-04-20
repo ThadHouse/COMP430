@@ -905,10 +905,10 @@ namespace Compiler.CodeGeneration2
                         {
                             typeChecker.TypeCheck(store.Types[type], expressionResultType);
                         }
-                        if (store.Types[type].FullName == "System.Void")
-                        {
-                            throw new TypeCheckException("Cannot have a local of type void");
-                        }
+
+                        typeChecker.AssertTypeIsNotVoid(store.Types[type]);
+
+
                         var loc = generator.DeclareLocal(store.Types[type], vardec.Name);
                         currentMethodInfo.Locals.Add(vardec.Name, loc);
                         generator.EmitStloc(loc);

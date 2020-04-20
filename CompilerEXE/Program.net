@@ -3,6 +3,8 @@
 class MyClass {
     field int x;
 
+    field void y;
+
     method void fc(void x) {
     }
 

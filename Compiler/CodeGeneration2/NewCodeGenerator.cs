@@ -82,6 +82,7 @@ namespace Compiler.CodeGeneration2
                     {
                         throw new RefTypeException("Ref types are not supported");
                     }
+                    typeChecker!.AssertTypeIsNotVoid(paramType);
                     parameterTypes[i] = paramType;
                 }
 
@@ -112,6 +113,8 @@ namespace Compiler.CodeGeneration2
             foreach (var field in fields)
             {
                 var fieldType = store.TypeDefLookup(field.Type);
+
+                typeChecker!.AssertTypeIsNotVoid(fieldType);
 
                 var definedField = type.DefineField(field.Name, fieldType, FieldAttributes.Public);
                 definedFields.Add(definedField);
@@ -147,10 +150,8 @@ namespace Compiler.CodeGeneration2
                     {
                         throw new RefTypeException("Ref types are not supported");
                     }
-                    if (tpe.FullName == "System.Void")
-                    {
-                        throw new TypeCheckException("Cannot have a parameter of type void");
-                    }
+
+                    typeChecker!.AssertTypeIsNotVoid(tpe);
                     return tpe;
                 }).ToArray();
 
@@ -223,6 +224,7 @@ namespace Compiler.CodeGeneration2
                     {
                         throw new RefTypeException("Ref types are not supported");
                     }
+                    typeChecker!.AssertTypeIsNotVoid(tpe);
                     return tpe;
                 }).ToArray();
 
