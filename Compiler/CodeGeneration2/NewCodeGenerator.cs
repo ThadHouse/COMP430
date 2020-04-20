@@ -147,6 +147,10 @@ namespace Compiler.CodeGeneration2
                     {
                         throw new RefTypeException("Ref types are not supported");
                     }
+                    if (tpe.FullName == "System.Void")
+                    {
+                        throw new TypeCheckException("Cannot have a parameter of type void");
+                    }
                     return tpe;
                 }).ToArray();
 

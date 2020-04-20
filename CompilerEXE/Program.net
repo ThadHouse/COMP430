@@ -3,7 +3,15 @@
 class MyClass {
     field int x;
 
+    method void fc(void x) {
+    }
+
     method entrypoint void MyFunction() {
+        
+        System::Console.WriteLine(56);
+
+        #void x = MyClass.MyFunction();
+
         System::Console.WriteLine(56);
         #System::Console.Out.WriteLine("Hello World \nfrom Out!");
 
