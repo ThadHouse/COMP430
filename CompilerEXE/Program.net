@@ -1,15 +1,10 @@
-﻿delegate void myFunc(int a, string b); 
+﻿delegate void myFunc(int a, string b);
 
 class MyClass {
     field int x;
 
-    field void y;
-
-    method void fc(void x) {
-    }
-
     method entrypoint void MyFunction() {
-        
+
         System::Console.WriteLine(56);
 
         #void x = MyClass.MyFunction();

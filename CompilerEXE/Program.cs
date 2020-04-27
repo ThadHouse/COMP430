@@ -128,11 +128,14 @@ namespace CompilerEXE
             }
 
             EmitMain(programName + "Emit", assemblies, tracer, rootNodes);
-            IlAsmMain(programName, assemblies, tracer, rootNodes);
+
+            // Skip the ilasm backend for demonstation.
+            //IlAsmMain(programName, assemblies, tracer, rootNodes);
 
 
 
             tracer.PrintEpochs();
+            Console.WriteLine("Compilation Complete!");
         }
     }
 }
