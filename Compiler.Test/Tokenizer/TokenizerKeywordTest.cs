@@ -27,5 +27,47 @@ namespace Compiler.Test.Tokenizer
                 Assert.IsType(tokenClass, tokens[0]);
             }
         }
+
+        [Fact]
+        public void TestKeywordsCantBeArrays()
+        {
+            Assert.Throws<InvalidTokenParsingException>(() =>
+            {
+                ReadOnlySpan<char> input = "return[]";
+                SimpleTokenizer.ParseIdentifier(ref input);
+            });
+        }
+
+        public static IEnumerable<object[]> Aliases => SimpleTokenizer.Aliases.Select(x => new object[] { x });
+
+        [Theory]
+        [MemberData(nameof(Aliases))]
+        public void TestAliasedKeywordsParsing(string alias)
+        {
+            var tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(alias);
+            Assert.Equal(1, tokens.Length);
+            var aliasedToken = Assert.IsType<AliasedIdentifierToken>(tokens[0]);
+
+        }
+
+        [Theory]
+        [MemberData(nameof(Aliases))]
+        public void TestAliasedKeywordsArrayParsing(string alias)
+        {
+            var tokenizer = new SimpleTokenizer();
+            if (alias == "void") return; // skip void
+            var tokens = tokenizer.EnumerateTokens(alias + "[]");
+            Assert.Equal(1, tokens.Length);
+            var aliasedToken = Assert.IsType<AliasedIdentifierToken>(tokens[0]);
+
+        }
+
+        [Fact]
+        public void TestVoidArrayFails()
+        {
+            var tokenizer = new SimpleTokenizer();
+            Assert.Throws<InvalidTokenParsingException>(() => tokenizer.EnumerateTokens("void[]"));
+        }
     }
 }
