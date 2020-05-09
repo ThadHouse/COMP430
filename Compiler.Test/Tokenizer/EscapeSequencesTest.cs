@@ -124,6 +124,12 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
+        public void TestInvalidUnicodeEscape()
+        {
+            Assert.Throws<UnrecognizedEscapeException>(() => EscapeSequence.EscapeUnicodeChar('n', "", 0, out var o));
+        }
+
+        [Fact]
         public void TestVariableLengthUnicodeEscapeCharacters()
         {
             Span<char> storage = stackalloc char[5];
