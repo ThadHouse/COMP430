@@ -228,19 +228,6 @@ namespace Compiler.Tokenizer
                 throw new InvalidTokenParsingException($"Invalid character {token[0]}");
             }
 
-            bool isArray = false;
-
-            // See if we are an array
-            if (token.Length > 2)
-            {
-                if (token[0] == '[' && token[1] == ']')
-                {
-                    // Is an array
-                    isArray = true;
-                    token = token.Slice(2);
-                }
-            }
-
             var knownToken = tokenString switch
             {
                 "class" => new ClassToken(),
@@ -264,44 +251,20 @@ namespace Compiler.Tokenizer
 
             if (knownToken != null)
             {
-                if (isArray)
-                {
-                    throw new InvalidTokenParsingException("Cannot have an array of keywords");
-                }
-                else
-                {
-                    return knownToken;
-                }
+                return knownToken;
             }
 
-            if (isArray)
+            return tokenString switch
             {
-                return tokenString switch
-                {
-                    "int" => new AliasedIdentifierToken("System.Int32[]", tokenString),
-                    "double" => new AliasedIdentifierToken("System.Double[]", tokenString),
-                    "string" => new AliasedIdentifierToken("System.String[]", tokenString),
-                    "bool" => new AliasedIdentifierToken("System.Boolean[]", tokenString),
-                    "object" => new AliasedIdentifierToken("System.Object[]", tokenString),
-                    "void" => new AliasedIdentifierToken("System.Void[]", tokenString),
+                "int" => new AliasedIdentifierToken("System.Int32", tokenString),
+                "double" => new AliasedIdentifierToken("System.Double", tokenString),
+                "string" => new AliasedIdentifierToken("System.String", tokenString),
+                "bool" => new AliasedIdentifierToken("System.Boolean", tokenString),
+                "object" => new AliasedIdentifierToken("System.Object", tokenString),
+                "void" => new AliasedIdentifierToken("System.Void", tokenString),
 
-                    _ => new IdentifierToken(tokenString.Replace("::", ".") + "[]"),
-                };
-            }
-            else
-            {
-                return tokenString switch
-                {
-                    "int" => new AliasedIdentifierToken("System.Int32", tokenString),
-                    "double" => new AliasedIdentifierToken("System.Double", tokenString),
-                    "string" => new AliasedIdentifierToken("System.String", tokenString),
-                    "bool" => new AliasedIdentifierToken("System.Boolean", tokenString),
-                    "object" => new AliasedIdentifierToken("System.Object", tokenString),
-                    "void" => new AliasedIdentifierToken("System.Void", tokenString),
-
-                    _ => new IdentifierToken(tokenString.Replace("::", ".")),
-                };
-            }
+                _ => new IdentifierToken(tokenString.Replace("::", ".")),
+            };
 
         }
 

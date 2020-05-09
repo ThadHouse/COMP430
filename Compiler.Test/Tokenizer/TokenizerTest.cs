@@ -129,5 +129,18 @@ abc@";
             Assert.IsType(firstToken, tokens[0]);
             Assert.IsType(secondToken, tokens[1]);
         }
+
+        [Theory]
+        [InlineData("*ab")]
+        [InlineData("%ab")]
+        [InlineData("1ab")]
+        public void TestIdentifiersCantStartWithInvalidCharacters(string str)
+        {
+            Assert.Throws<InvalidTokenParsingException>(() =>
+            {
+                ReadOnlySpan<char> input = str;
+                SimpleTokenizer.ParseIdentifier(ref input);
+            });
+        }
     }
 }
