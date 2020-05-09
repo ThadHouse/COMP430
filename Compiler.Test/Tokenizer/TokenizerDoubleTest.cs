@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Compiler.Tokenizer;
@@ -12,7 +12,8 @@ namespace Compiler.Test.Tokenizer
         [Theory]
         [InlineData(Math.PI)]
         [InlineData(-Math.PI)]
-        public void TestDoubleParsing(double value) {
+        public void TestDoubleParsing(double value)
+        {
             var input = value.ToString();
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(input.AsSpan());
@@ -20,7 +21,7 @@ namespace Compiler.Test.Tokenizer
             var dctoken = Assert.IsType<DoubleConstantToken>(tokens[0]);
             Assert.Equal(value, dctoken.Value, 5);
         }
-        
-        
+
+
     }
 }

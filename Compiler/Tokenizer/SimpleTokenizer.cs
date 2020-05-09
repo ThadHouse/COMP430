@@ -49,6 +49,10 @@ namespace Compiler.Tokenizer
         // Parse a single character token
         public static IToken ParseCharacterToken(char token, char? nextToken)
         {
+            // 100% branch coverage for the inner ifs cannot be obtained because
+            // of a code gen issue in C#
+            // https://github.com/dotnet/roslyn/issues/44109
+
             // Any double character tokens are special cased with a lookahead
             if (token == '=')
             {

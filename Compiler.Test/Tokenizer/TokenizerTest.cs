@@ -89,25 +89,40 @@ abc@";
             var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<InvalidTokenParsingException>(() => SimpleTokenizer.ParseCharacterToken('c', null));
         }
-        
+
         [Theory]
         [InlineData("==", typeof(DoubleEqualsToken))]
         [InlineData("!=", typeof(NotEqualsToken))]
         [InlineData("<=", typeof(LessThenOrEqualToToken))]
         [InlineData(">=", typeof(GreaterThenOrEqualToToken))]
-        public void TestTokenizerDoubleCharTokens(string str, Type tokenType) {
+        public void TestTokenizerDoubleCharTokens(string str, Type tokenType)
+        {
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(str.AsSpan());
             Assert.Equal(1, tokens.Length);
             Assert.IsType(tokenType, tokens[0]);
         }
-        
+
+        [Theory]
+        [InlineData("= ", typeof(EqualsToken))]
+        [InlineData("! ", typeof(ExclamationPointToken))]
+        [InlineData("< ", typeof(LeftArrowToken))]
+        [InlineData("> ", typeof(RightArrowToken))]
+        public void TestTokenizerDoubleCharTokenCaseWithSpaceAfterFirstChar(string str, Type tokenType)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(1, tokens.Length);
+            Assert.IsType(tokenType, tokens[0]);
+        }
+
         [Theory]
         [InlineData("= =", typeof(EqualsToken), typeof(EqualsToken))]
         [InlineData("! =", typeof(ExclamationPointToken), typeof(EqualsToken))]
         [InlineData("< =", typeof(LeftArrowToken), typeof(EqualsToken))]
         [InlineData("> =", typeof(RightArrowToken), typeof(EqualsToken))]
-        public void TestTokenizerDoubleCharTokensWithSpace(string str, Type firstToken, Type secondToken) {
+        public void TestTokenizerDoubleCharTokensWithSpace(string str, Type firstToken, Type secondToken)
+        {
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(str.AsSpan());
             Assert.Equal(2, tokens.Length);
