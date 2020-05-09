@@ -12,8 +12,7 @@ namespace Compiler.Tokenizer
     public class SimpleTokenizer : ITokenizer
     {
         public static readonly char[] AllowedSingleCharacters = new char[]
-{
-            '[', ']', '{', '}', ';', '(', ')', '.', ',', '=', '-', '+', '*', '&', '^', '%', '/', '!', '<', '>'
+{           '[', ']', '{', '}', '(', ')', ';', '.', ',', '-', '+', '&', '^', '%', '!', '/', '<', '>', '*', '='
 };
 
         public static readonly string[] Aliases = new string[]
@@ -93,6 +92,7 @@ namespace Compiler.Tokenizer
             }
 
             // If it wasn't a double token, just handle it normally
+            // Do not need to check for the tokens handled above
             return token switch
             {
                 '[' => new LeftBracketToken(),
@@ -109,10 +109,7 @@ namespace Compiler.Tokenizer
                 '&' => new AmpersandToken(),
                 '^' => new HatToken(),
                 '%' => new PercentSignToken(),
-                '!' => new ExclamationPointToken(),
                 '/' => new ForwardSlashToken(),
-                '<' => new LeftArrowToken(),
-                '>' => new RightArrowToken(),
                 '*' => new StarToken(),
                 _ => throw new InvalidTokenParsingException("Assertion here should never be hit") // This should never be hit
             };

@@ -231,5 +231,15 @@ x = 5;
             }
 
         }
+
+        [Fact]
+        public void TestJumpTableOptimizationBranches()
+        {
+            for (char i = '\0'; i <= 128; i++)
+            {
+                if (SimpleTokenizer.AllowedSingleCharacters.AsSpan().Contains(i)) continue;
+                Assert.Throws<InvalidTokenParsingException>(() => SimpleTokenizer.ParseCharacterToken(i, null));
+            }
+        }
     }
 }
