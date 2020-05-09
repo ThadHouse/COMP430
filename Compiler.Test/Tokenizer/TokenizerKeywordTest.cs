@@ -52,6 +52,18 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Theory]
+        [InlineData("abc")]
+        public void TestCustomIdentifierArray(string str)
+        {
+            str = str + "[]";
+            var tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str);
+            Assert.Equal(1, tokens.Length);
+            var idToken = Assert.IsType<IdentifierToken>(tokens[0]);
+            Assert.Equal(str, idToken.Name);
+        }
+
+        [Theory]
         [MemberData(nameof(Aliases))]
         public void TestAliasedKeywordsArrayParsing(string alias)
         {
