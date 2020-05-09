@@ -46,6 +46,15 @@ namespace Compiler.Test.Tokenizer
             Assert.Throws<StringConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
         }
 
+        [Fact]
+        public void TestStringEscapedConstantTooShort()
+        {
+            var code = "\"\\";
+
+            ITokenizer tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
+            Assert.Throws<StringConstantException>(() => tokenizer.EnumerateTokens(code.AsSpan()));
+        }
+
         [Theory]
         [InlineData(@"\tabc", "\tabc")]
         [InlineData(@"\ta\nbc", "\ta\nbc")]

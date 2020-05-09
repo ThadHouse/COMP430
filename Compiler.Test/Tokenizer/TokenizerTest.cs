@@ -89,5 +89,79 @@ abc@";
             var tokenizer = new Compiler.Tokenizer.SimpleTokenizer();
             Assert.Throws<InvalidTokenParsingException>(() => SimpleTokenizer.ParseCharacterToken('c', null));
         }
+
+        [Theory]
+        [InlineData("==", typeof(DoubleEqualsToken))]
+        [InlineData("!=", typeof(NotEqualsToken))]
+        [InlineData("<=", typeof(LessThenOrEqualToToken))]
+        [InlineData(">=", typeof(GreaterThenOrEqualToToken))]
+        public void TestTokenizerDoubleCharTokens(string str, Type tokenType)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(1, tokens.Length);
+            Assert.IsType(tokenType, tokens[0]);
+        }
+
+        [Theory]
+        [InlineData("= ", typeof(EqualsToken))]
+        [InlineData("! ", typeof(ExclamationPointToken))]
+        [InlineData("< ", typeof(LeftArrowToken))]
+        [InlineData("> ", typeof(RightArrowToken))]
+        public void TestTokenizerDoubleCharTokenCaseWithSpaceAfterFirstChar(string str, Type tokenType)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(1, tokens.Length);
+            Assert.IsType(tokenType, tokens[0]);
+        }
+
+        [Theory]
+        [InlineData("= =", typeof(EqualsToken), typeof(EqualsToken))]
+        [InlineData("! =", typeof(ExclamationPointToken), typeof(EqualsToken))]
+        [InlineData("< =", typeof(LeftArrowToken), typeof(EqualsToken))]
+        [InlineData("> =", typeof(RightArrowToken), typeof(EqualsToken))]
+        public void TestTokenizerDoubleCharTokensWithSpace(string str, Type firstToken, Type secondToken)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(2, tokens.Length);
+            Assert.IsType(firstToken, tokens[0]);
+            Assert.IsType(secondToken, tokens[1]);
+        }
+
+        [Theory]
+        [InlineData("*ab")]
+        [InlineData("%ab")]
+        [InlineData("1ab")]
+        public void TestIdentifiersCantStartWithInvalidCharacters(string str)
+        {
+            Assert.Throws<InvalidTokenParsingException>(() =>
+            {
+                ReadOnlySpan<char> input = str;
+                SimpleTokenizer.ParseIdentifier(ref input);
+            });
+        }
+
+        [Theory]
+        [InlineData("#abc")]
+        [InlineData("#afb")]
+        public void TestComments(string str)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(0, tokens.Length);
+        }
+
+        [Theory]
+        [InlineData("#abc\n123")]
+        [InlineData("#afb\n123")]
+        public void TestCommentsNewLine(string str)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(1, tokens.Length);
+            Assert.IsType<IntegerConstantToken>(tokens[0]);
+        }
     }
 }
