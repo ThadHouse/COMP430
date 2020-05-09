@@ -49,14 +49,16 @@ namespace Compiler.Tokenizer
         // Parse a single character token
         public static IToken ParseCharacterToken(char token, char? nextToken)
         {
-            // 100% branch coverage for the inner ifs cannot be obtained because
-            // of a code gen issue in C#
+            // The nullable nextToken must not be used in the if compaison directly
+            // or 100% coverage cannot be obtained because of bad code gen
             // https://github.com/dotnet/roslyn/issues/44109
+
+            char nonNullNextToken = nextToken.GetValueOrDefault();
 
             // Any double character tokens are special cased with a lookahead
             if (token == '=')
             {
-                if (nextToken != null && nextToken == '=')
+                if (nextToken != null && nonNullNextToken == '=')
                 {
                     return new DoubleEqualsToken();
                 }
@@ -65,7 +67,7 @@ namespace Compiler.Tokenizer
 
             if (token == '!')
             {
-                if (nextToken != null && nextToken == '=')
+                if (nextToken != null && nonNullNextToken == '=')
                 {
                     return new NotEqualsToken();
                 }
@@ -74,7 +76,7 @@ namespace Compiler.Tokenizer
 
             if (token == '<')
             {
-                if (nextToken != null && nextToken == '=')
+                if (nextToken != null && nonNullNextToken == '=')
                 {
                     return new LessThenOrEqualToToken();
                 }
@@ -83,7 +85,7 @@ namespace Compiler.Tokenizer
 
             if (token == '>')
             {
-                if (nextToken != null && nextToken == '=')
+                if (nextToken != null && nonNullNextToken == '=')
                 {
                     return new GreaterThenOrEqualToToken();
                 }
