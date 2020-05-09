@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Compiler.Tokenizer.Tokens
 {
-    class DoubleConstantToken : IToken
+    public class DoubleConstantToken : IToken
     {
         public double Value { get; }
 
