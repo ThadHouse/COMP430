@@ -76,10 +76,12 @@ namespace Compiler.Test.Tokenizer
         }
 
         [Fact]
-        public void TestParseIdentifierEmptyArray() {
-            Assert.Throws<InvalidTokenParsingException>(() => {
-               ReadOnlySpan<char> data = "";
-               SimpleTokenizer.ParseIdentifier(ref data);
+        public void TestParseIdentifierEmptyArray()
+        {
+            Assert.Throws<InvalidTokenParsingException>(() =>
+            {
+                ReadOnlySpan<char> data = "";
+                SimpleTokenizer.ParseIdentifier(ref data);
             });
         }
 
