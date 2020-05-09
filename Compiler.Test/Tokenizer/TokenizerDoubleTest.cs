@@ -9,14 +9,18 @@ namespace Compiler.Test.Tokenizer
 {
     public class Token
     {
-        [Fact]
-        public void TestDoubleParsing() {
-            var input = Math.PI.ToString();
+        [Theory]
+        [InlineData(Math.PI)]
+        [InlineData(-Math.PI)]
+        public void TestDoubleParsing(double value) {
+            var input = value.ToString();
             ITokenizer tokenizer = new SimpleTokenizer();
             var tokens = tokenizer.EnumerateTokens(input.AsSpan());
             Assert.Equal(1, tokens.Length);
             var dctoken = Assert.IsType<DoubleConstantToken>(tokens[0]);
-            Assert.Equal(Math.PI, dctoken.Value, 5);
+            Assert.Equal(value, dctoken.Value, 5);
         }
+        
+        
     }
 }
