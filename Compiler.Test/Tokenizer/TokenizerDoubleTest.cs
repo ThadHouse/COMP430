@@ -22,6 +22,15 @@ namespace Compiler.Test.Tokenizer
             Assert.Equal(value, dctoken.Value, 5);
         }
 
+        [Fact]
+        public void TestSingleDotNotParsingAsNumber()
+        {
+            ReadOnlySpan<char> input = ".";
 
+            var result = SimpleTokenizer.TryParseNumericToken(ref input);
+
+            Assert.Null(result);
+            Assert.Equal(1, input.Length);
+        }
     }
 }
