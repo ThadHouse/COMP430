@@ -18,13 +18,15 @@ class MyClass {
             i = i + 1;
         }
         if (i > 5) {
-            System::Console.WriteLine("In the \n if");
+            System::Console.WriteLine("In the if");
         } else {
             System::Console.WriteLine("In the Else");
         }
         System::Console.Write("Finished Loop: ");
         System::Console.WriteLine(i);
         auto a = new MyClass();
+        auto b = newarr int(5);
+        b[0] = 42;
         a.x = 42;
         System::Console.WriteLine(a.x.ToString());
     }

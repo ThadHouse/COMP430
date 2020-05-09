@@ -48,7 +48,7 @@ namespace Compiler.TypeChecker
                 throw new ArgumentNullException(nameof(type), "Type cannot be null");
             }
 
-            if (type.FullName == "System.Void")
+            if (type.FullName == typeof(void).FullName)
             {
                 throw new TypeCheckException("Type cannot be void here");
             }
