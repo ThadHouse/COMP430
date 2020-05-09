@@ -142,5 +142,26 @@ abc@";
                 SimpleTokenizer.ParseIdentifier(ref input);
             });
         }
+
+        [Theory]
+        [InlineData("#abc")]
+        [InlineData("#afb")]
+        public void TestComments(string str)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(0, tokens.Length);
+        }
+
+        [Theory]
+        [InlineData("#abc\n123")]
+        [InlineData("#afb\n123")]
+        public void TestCommentsNewLine(string str)
+        {
+            ITokenizer tokenizer = new SimpleTokenizer();
+            var tokens = tokenizer.EnumerateTokens(str.AsSpan());
+            Assert.Equal(1, tokens.Length);
+            Assert.IsType<IntegerConstantToken>(tokens[0]);
+        }
     }
 }
