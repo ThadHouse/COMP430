@@ -405,5 +405,10 @@ namespace Compiler.CodeGeneration2.IlAsmBuilders
             }
             OpCodes.AddFieldInstruction(field, "ldsflda");
         }
+
+        public void EmitPop()
+        {
+            OpCodes.Add("pop");
+        }
     }
 }

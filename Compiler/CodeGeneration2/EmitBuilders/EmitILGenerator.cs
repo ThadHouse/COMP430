@@ -268,6 +268,11 @@ namespace Compiler.CodeGeneration2.EmitBuilders
             generator.Emit(OpCodes.Newobj, ((EmitConstructorInfo)constructorInfo).ConstructorInfo);
         }
 
+        public void EmitPop()
+        {
+            generator.Emit(OpCodes.Pop);
+        }
+
         public void EmitRet()
         {
             generator.Emit(OpCodes.Ret);

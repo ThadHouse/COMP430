@@ -176,10 +176,10 @@ namespace Compiler.CodeGeneration2
                 methodsDictionary.Add(definedMethod, method);
 
                 int offset = 0;
-                if (!method.IsStatic)
-                {
-                    offset = 1;
-                }
+                //if (!method.IsStatic)
+                //{
+                //    offset = 1;
+                //}
 
                 for (int i = 0; i < method.Parameters.Count; i++)
                 {
@@ -297,9 +297,11 @@ namespace Compiler.CodeGeneration2
                 {
                     var generator = method.GetILGenerator();
 
+                    int offset = method.IsStatic ? 0 : 1;
+
                     var parameters = toGenerate.Methods[method].Parameters
-                        .Select((p, i) => (i, store.Types[p.Type], p.Name))
-                        .ToDictionary(x => x.Name, x => ((short)x.i, x.Item2));
+                        .Select((p, i) => (i + offset, store.Types[p.Type], p.Name))
+                        .ToDictionary(x => x.Name, x => ((short)x.Item1, x.Item2));
 
 
 

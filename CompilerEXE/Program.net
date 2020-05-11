@@ -1,9 +1,62 @@
 ﻿delegate void myFunc(int a, string b);
 
+delegate int MyDelegate(int a, int b);
+
+class DelegateTester {
+  method int MyMethod(int a, int b) {
+    return a + b;
+  }
+
+  method void MyInstanceMethod() {
+    MyDelegate del = this.MyMethod; # Delegate points to this
+    del.Invoke(15, 36); # Invoke calls a delegate
+  }
+
+  method static void TakeDelegate(MyDelegate del) {
+    del.Invoke(42, 56);
+  }
+
+  method static void MyStatic() {
+    #MyDelegate del = DelegateTester.MyMethod; # Not allowed, can't take a delegate to a static. This will compile however, which is a bug
+    auto n = new DelegateTester();
+    MyDelegate del = n.MyMethod;
+
+    DelegateTester.TakeDelegate(del); # Can pass a delegate
+
+    #auto autoDel = n.MyMethod; # Can't type infer delegates, as mutliple delegates with same signature could exist
+    #DelegateTester.TakeDelegate(n.MyMethod); # Can't create a delegate inline to call a function. Delegate must be explicitly created before
+  }
+}
+
 class MyClass {
     field int x;
 
+    field int myField;
+
+    constructor() {
+        myField = 85;
+    }
+
+    method static int Function(int v, int c) {
+        return 32;
+    }
+
+    method static string Function() {
+        return "42";
+    }
+
+    method void OtherInstanceFunction() {
+    }
+
+    method void InstanceFunction() {
+        this.OtherInstanceFunction();
+    }
+
     method entrypoint void MyFunction() {
+
+        int[] myArr = newarr int(56);
+
+        MyClass.Function();
 
         System::Console.WriteLine(56);
 

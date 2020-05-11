@@ -533,6 +533,16 @@ namespace Compiler.CodeGeneration2
                 //HandleVariableAccess(vae, true, ref callTarget);
                 WriteExpression(vae, true, true, ref callTarget);
             }
+            else if (methodCall.Expression is ThisConstantNode)
+            {
+                if (currentMethodInfo.IsStatic)
+                {
+                    throw new InvalidOperationException("This cannot be used in a static context");
+                }
+                isStatic = false;
+                generator.EmitLdthis();
+                callTarget = currentMethodInfo.Type;
+            }
             else
             {
                 throw new InvalidOperationException("Op not suppored");
@@ -806,6 +816,10 @@ namespace Compiler.CodeGeneration2
                 case ArrayIndexExpression arrIdx:
                     HandleArrayExpression(arrIdx, isRight, ref expressionResultType);
                     break;
+                case ThisConstantNode tcn:
+                    generator.EmitLdthis();
+                    expressionResultType = currentMethodInfo.Type;
+                    break;
                 default:
                     throw new UnknownExpressionException("Expression not supported");
             }
@@ -930,7 +944,8 @@ namespace Compiler.CodeGeneration2
                     WriteExpression(expStatement, true, false, ref expressionResultType);
                     if (expressionResultType != null && expressionResultType.FullName != "System.Void")
                     {
-                        throw new NotSupportedException("Stack must be emptied");
+                        // emit a pop
+                        generator.EmitPop();
                     }
                     break;
                 case BaseClassConstructorSyntax _:

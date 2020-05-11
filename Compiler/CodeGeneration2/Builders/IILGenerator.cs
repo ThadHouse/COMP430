@@ -96,5 +96,7 @@ namespace Compiler.CodeGeneration2.Builders
         void EmitLdsfld(IFieldInfo field);
 
         void EmitLdsflda(IFieldInfo field);
+
+        void EmitPop();
     }
 }
