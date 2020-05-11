@@ -124,7 +124,7 @@ class DelegateTester {
   }
 
   method static void MyStatic() {
-    #MyDelegate del = DelegateTester.MyMethod; # Not allowed, can't take a delegate to a static. This will compile however, which is a bug
+    #MyDelegate del = DelegateTester.MyMethod; # Not allowed, can't take a delegate to a static.
     auto n = new DelegateTester();
     MyDelegate del = n.MyMethod;
 

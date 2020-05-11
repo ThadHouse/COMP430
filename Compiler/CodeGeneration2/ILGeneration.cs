@@ -391,32 +391,42 @@ namespace Compiler.CodeGeneration2
                     throw new MethodReferenceException("Method and delegate return types do not match");
                 }
 
+                // Find the constructor
+                var constructor = store.Constructors[expressionResultType]
+                    .Where(x => store.ConstructorParameters[x].SequenceEqual(delegateConstructorTypes))
+                    .First();
+
+                if (methodRef.Expression is VariableSyntaxNode vsn)
+                {
+                    if (callTarget.FullName == vsn.Name)
+                    {
+                        // Trying to grab a delegate with a static instance
+                        if (!method.IsStatic)
+                        {
+                            throw new MethodReferenceException("Can't take a instance method reference without an object.");
+                        }
+                        else
+                        {
+                            generator.EmitLdnull();
+                            generator.EmitLdftn(method);
+                            generator.EmitNewobj(constructor);
+                            return;
+                        }
+                    }
+                }
 
                 if (method.IsStatic)
                 {
                     throw new MethodReferenceException("Cannot grab an instance reference to a static delegate");
                 }
 
-                // Find the constructor
-                var constructor = store.Constructors[expressionResultType]
-                    .Where(x => store.ConstructorParameters[x].SequenceEqual(delegateConstructorTypes))
-                    .First();
-
-                // Object is already on stack
-                if (method.IsStatic)
+                if (callTarget.IsValueType)
                 {
-                    generator.EmitLdftn(method);
+                    generator.EmitBox(callTarget);
                 }
-                else
-                {
-                    if (callTarget.IsValueType)
-                    {
-                        generator.EmitBox(callTarget);
-                    }
 
-                    generator.EmitDup();
-                    generator.EmitLdvirtftn(method);
-                }
+                generator.EmitDup();
+                generator.EmitLdvirtftn(method);
                 generator.EmitNewobj(constructor);
                 return;
                 ;
