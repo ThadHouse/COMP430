@@ -9,12 +9,19 @@ using System.Text.RegularExpressions;
 
 namespace Compiler.Tokenizer
 {
+    // This tokenizer is designed to simply handle tokenization of a string.
+    // It tokenizes a character at a time, with helper methods to try and tokenize
+    // multi character things
     public class SimpleTokenizer : ITokenizer
     {
+        // A list of all characters that are allowed to be by themselves. These characters can't appear in identifiers
         public static readonly char[] AllowedSingleCharacters = new char[]
-{           '[', ']', '{', '}', '(', ')', ';', '.', ',', '-', '+', '&', '^', '%', '!', '/', '<', '>', '*', '='
-};
+        {
+            '[', ']', '{', '}', '(', ')', ';', '.', ',', '-', '+', '&', '^', '%', '!', '/', '<', '>', '*', '='
+        };
 
+        // These are type aliases. These are special identifiers that can only appear in types
+        // Map to the System.* types in the BCL
         public static readonly string[] Aliases = new string[]
         {
             "int",
@@ -25,6 +32,7 @@ namespace Compiler.Tokenizer
             "void",
         };
 
+        // A list of all keywords in the language. Reserved keywords could be added if necessary
         public static readonly string[] Keywords = new string[]
         {
             "class",
@@ -39,7 +47,7 @@ namespace Compiler.Tokenizer
             "delegate",
             "field",
             "method",
-            "ref",
+            "ref", // Not used
             "new",
             "newarr",
             "while"
@@ -115,13 +123,16 @@ namespace Compiler.Tokenizer
             };
         }
 
+        // Trys to parse a single character token 
         public static IToken? TryParseCharLikeToken(ref ReadOnlySpan<char> token)
         {
+            // If its not in single character list, return, its not a character token
             if (!AllowedSingleCharacters.Contains(token[0]))
             {
                 return null;
             }
 
+            // Parsing a character requires the next token for double character tokens like ==
             char firstChar = token[0];
             token = token.Slice(1);
 
@@ -133,6 +144,7 @@ namespace Compiler.Tokenizer
             }
 
             var tokenToRet = ParseCharacterToken(firstChar, nextChar);
+            // Multi char needs to slice the span again to remove the 2nd char
             if (tokenToRet is IMultiCharOperationToken)
             {
                 token = token.Slice(1);
@@ -140,6 +152,12 @@ namespace Compiler.Tokenizer
             return tokenToRet;
         }
 
+        // Tries to parse a numeric token.
+        // This has some issues, and does need to be improved
+        // It needs to error, and not return null for something like 123abc, since we don't want to allow 
+        // that as an identifier
+        // Doubles are semi supported, however not supported in the parser or emitter.
+        // Testing more common cases would massively help here.
         public static IToken? TryParseNumericToken(ref ReadOnlySpan<char> token)
         {
             var originalString = token;
@@ -149,13 +167,16 @@ namespace Compiler.Tokenizer
             bool hasDot = false;
             bool wasDotLast = true;
 
+            // We could be a negative number
             if (token[0] == '-')
             {
-                // Negative Number (potentiall)
+                // Negative Number (potential)
                 isNegative = true;
                 token = token.Slice(1);
             }
 
+
+            // Loop while there is digits or dots to look for
             while (!token.IsEmpty && (char.IsDigit(token[0]) || token[0] == '.'))
             {
                 if (token[0] == '.')
@@ -194,6 +215,7 @@ namespace Compiler.Tokenizer
 
             var toParse = originalString.Slice(0, dataCount).ToString();
 
+            // Try to parse into a double or an int
             if (hasDot && !wasDotLast)
             {
                 double iResult = double.Parse(toParse, CultureInfo.InvariantCulture);
@@ -206,6 +228,10 @@ namespace Compiler.Tokenizer
             }
         }
 
+        // Parse an identifier token
+        // Identifier tokens have an issue where they don't allow any numeric characters
+        // Its in the 1st while, but needs tests to ensure it doesn't cause any other issues
+        // Arrays ([]) are part of the identifer too.
         public static IToken ParseIdentifier(ref ReadOnlySpan<char> token)
         {
             var origString = token;
@@ -241,6 +267,10 @@ namespace Compiler.Tokenizer
                 }
             }
 
+            // This checks to see if its a known token.
+            // This needs to be extracted into a function so we can handle reserved keywords properly.
+            // That could then be tested against the Keyword array at the top of this file.
+            // Reflection could also be used for this, and might be a cooler demo.
             var knownToken = tokenString switch
             {
                 "class" => new ClassToken(),
@@ -262,6 +292,7 @@ namespace Compiler.Tokenizer
                 _ => (IToken?)null,
             };
 
+            // Check for things that can be arrays, or aliases, or its just a normal identifier
             if (knownToken != null)
             {
                 if (isArray)
@@ -285,6 +316,8 @@ namespace Compiler.Tokenizer
                     "object" => new AliasedIdentifierToken("System.Object[]", tokenString),
                     "void" => throw new InvalidTokenParsingException("void[] makes no sense"),
 
+                    // In our syntax, :: separates namespaces, but IL needs these to have a .
+                    // Easy change
                     _ => new IdentifierToken(tokenString.Replace("::", ".") + "[]"),
                 };
             }
@@ -305,6 +338,7 @@ namespace Compiler.Tokenizer
 
         }
 
+        // Try to parse a character literal. Escapes are handled here, but not supporting them makes this much easier
         private IToken? TryParseCharLiteral(ref ReadOnlySpan<char> input)
         {
             if (input[0] != '\'')
@@ -355,6 +389,7 @@ namespace Compiler.Tokenizer
             }
         }
 
+        // Try to parse a string literal. This supports escapes, but this is harder to actually do.
         private IToken? TryParseStringLiteral(ref ReadOnlySpan<char> input)
         {
             if (input[0] != '"')
@@ -408,18 +443,22 @@ namespace Compiler.Tokenizer
             }
         }
 
+        // This is our main enumerations function
         public ReadOnlySpan<IToken> EnumerateTokens(ReadOnlySpan<char> input)
         {
             var tokens = new List<IToken>();
 
             while (!input.IsEmpty)
             {
+                // Loop through all white space
                 if (char.IsWhiteSpace(input[0]))
                 {
                     input = input.Slice(1);
                     continue;
                 }
 
+                // Try to parse a number. As said above, 123abc would parse as 123, and then parse as abc next. This 
+                // needs to be fixed.
                 var potentialNumber = TryParseNumericToken(ref input);
                 if (potentialNumber != null)
                 {
@@ -427,6 +466,7 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
+                // Try to parse a single character
                 var potentialChar = TryParseCharLikeToken(ref input);
                 if (potentialChar != null)
                 {
@@ -434,6 +474,7 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
+                // Try to parse a character literal.
                 var potentialCharLiteral = TryParseCharLiteral(ref input);
                 if (potentialCharLiteral != null)
                 {
@@ -441,12 +482,15 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
+                // Try to parse a string literal
                 var potentialStringLiteral = TryParseStringLiteral(ref input);
                 if (potentialStringLiteral != null)
                 {
                     tokens.Add(potentialStringLiteral);
                     continue;
                 }
+
+                //Comment to the end of the line on #
 
                 if (input[0] == '#')
                 {
@@ -462,6 +506,7 @@ namespace Compiler.Tokenizer
                     continue;
                 }
 
+                // If all of that is done, we have an identifier
                 tokens.Add(ParseIdentifier(ref input));
             }
 
