@@ -12,6 +12,8 @@ namespace Compiler.Tokenizer
     // This tokenizer is designed to simply handle tokenization of a string.
     // It tokenizes a character at a time, with helper methods to try and tokenize
     // multi character things
+    // A huge issue is line and column numbers are completely missing. Making compilation errors
+    // an absolute nightmare
     public class SimpleTokenizer : ITokenizer
     {
         // A list of all characters that are allowed to be by themselves. These characters can't appear in identifiers

@@ -10,6 +10,13 @@ using Compiler.Tokenizer.Tokens;
 
 namespace Compiler.Parser
 {
+    // The parser is kind of a bit insane, and is in need of a rewrite.
+    // The biggest issue is order of operations is not upheld at all, no grouping is supported
+    // and the code flow is a bit crazy. 
+    // Also, the tokenizer not providing line and column numbers becomes a problem here too.
+    // The parent node is also USELESS, and is just wrong half the time.
+
+    // We do a lot of minimum length checks in here, there should be a function that checks this easily.
     public class SimpleParser : IParser
     {
         // Trying to parse an exception
@@ -418,6 +425,7 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Out of tokens?");
         }
 
+        // Any of the methods in here that can return null should be renamed to a Try* method, since thats what it does.
         private static StatementSyntaxNode? ParseStatement(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
             var parsedVarDec = ParseVariableDeclaration(ref tokens, parent);
@@ -743,6 +751,7 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Out of tokens");
         }
 
+        // Parsing a field is not super hard. Support for static fields should be added.
         private static FieldSyntaxNode ParseField(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
             // Field must have at least 3 more tokens
@@ -773,6 +782,7 @@ namespace Compiler.Parser
                     case SemiColonToken _:
                         return new FieldSyntaxNode(parent, typeToken.Name, nameToken.Name, null, ref tokens);
                     case EqualsToken _:
+                        // The lambda here was to allow parent node, which ended up being useless. This should be simplifed
                         return new FieldSyntaxNode(parent, typeToken.Name, nameToken.Name, (ref ReadOnlySpan<IToken> tkns, ISyntaxNode pnt) =>
                         {
                             var toRet = ParseExpression(ref tkns, pnt, null);
@@ -1004,6 +1014,8 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Not enough tokens left to parse");
         }
 
+        // Parsing a delegate is easy. Find the type, find the name, and then we parse the parameters. Then we're done.
+        
         public static DelegateSyntaxNode ParseDelegate(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
             // Need 5 more tokens: type, name, ();
@@ -1044,6 +1056,10 @@ namespace Compiler.Parser
             return new DelegateSyntaxNode(parent, parameters, typeToken.Name, nameToken.Name);
         }
 
+        // Parsing a class starts with the class declaration, and then will loop through until it
+        // finds a constructor, method or field token. This is why the syntax has these 3 constructs
+        // start with those keywords. It turns these methods from `TryParse` to just parse.
+        // Properties would be a cool thing to add at some point.
         public static ClassSyntaxNode ParseClass(ref ReadOnlySpan<IToken> tokens, ISyntaxNode parent)
         {
 
@@ -1076,10 +1092,14 @@ namespace Compiler.Parser
 
                 switch (curToken)
                 {
+                    // A top level left brace is a failure
                     case LeftBraceToken _:
                         throw new InvalidTokenException("Too many left braces");
                     case RightBraceToken _:
+                    // The other parse functions will handle their braces, so if we get here 
+                    // we are done with the class.
                         return classSyntaxNode;
+                    // Below here just parses the 3 things that can be in a class.
                     case ConstructorToken _:
                         classSyntaxNode.Constructors.Add(ParseConstructor(ref tokens, parent));
                         break;
@@ -1097,6 +1117,10 @@ namespace Compiler.Parser
             throw new InvalidTokenException("Out of tokens?");
         }
 
+        // Parse tokens from the top level.
+        // Everything starts with a root node, and from the root we 
+        // are only allowed to have Classes and Delegates. No other tokens are actually allowed at the root.
+        // From here, the class or delegate is parsed individually
         public ImmutableRootSyntaxNode ParseTokens(ReadOnlySpan<IToken> tokens)
         {
             var rootNode = new RootSyntaxNode();
