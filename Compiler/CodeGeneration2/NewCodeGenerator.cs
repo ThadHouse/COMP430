@@ -13,6 +13,10 @@ using Compiler.TypeChecker;
 namespace Compiler.CodeGeneration2
 {
 
+    // This is the code generator that can work with mulitple backends. See the exe project for examples on how to switch between them.
+    // Currently, an IL Asm backend and a reflection emit backend is supported.
+    // IL Asm can then be compiled using the .NET Core ilasm, allowing a core library.
+    // Emit can only actually emit executables on framework, on core it can't emit a PE file.
     public class NewCodeGenerator
     {
         private IType[]? delegateConstructorTypes;
@@ -28,6 +32,8 @@ namespace Compiler.CodeGeneration2
             this.tracer = tracer;
         }
 
+        // We need to actually enumerate all of our types, and generate the initial type definitions for those types
+        // This is needed for emit to actually be able to generate a method using one of these types.
         private GeneratedData CreateTypesToGenerate(IReadOnlyList<ImmutableRootSyntaxNode> rootNodes, CodeGenerationStore store)
         {
             var toGenerate = new GeneratedData();
@@ -57,6 +63,8 @@ namespace Compiler.CodeGeneration2
             return toGenerate;
         }
 
+        // Generate all of our delegates. Delegates are easy, since the code generated for them is fixed, and all implemented
+        // by the runtime.
         private void GenerateDelegates(GeneratedData toGenerate, CodeGenerationStore store)
         {
             foreach (var delegateToGenerate in toGenerate.Delegates)
@@ -66,6 +74,7 @@ namespace Compiler.CodeGeneration2
 
                 store.Fields.Add(type, Array.Empty<IFieldInfo>());
 
+                // Generate our constructor
                 var constructor = type.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, delegateConstructorTypes!);
                 constructor.SetImplementationFlags(MethodImplAttributes.Runtime);
 
@@ -88,6 +97,7 @@ namespace Compiler.CodeGeneration2
 
                 var returnType = store.TypeDefLookup(syntaxNode.ReturnType);
 
+                // Generate the invoke method
                 var method = type.DefineMethod("Invoke", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.NewSlot, returnType, parameterTypes, false);
                 method.SetImplementationFlags(MethodImplAttributes.Runtime);
 
@@ -104,6 +114,7 @@ namespace Compiler.CodeGeneration2
             }
         }
 
+        // Class fields generation. If we supported static, the first part of that support would need to be added here.
         private IReadOnlyList<StatementSyntaxNode> GenerateClassFields(ITypeBuilder type, IReadOnlyList<FieldSyntaxNode> fields, CodeGenerationStore store,
             ISyntaxNode syntaxNode)
         {
@@ -120,10 +131,12 @@ namespace Compiler.CodeGeneration2
                 definedFields.Add(definedField);
                 if (field.Expression != null)
                 {
+                    // For any fields that are initialized, add that to the init expressions for this class.
                     initExpressions.Add(new ExpressionEqualsExpressionSyntaxNode(field, new VariableSyntaxNode(field, field.Name), field.Expression));
                 }
             }
 
+            // Add the base init expression (the call to the base class constructor)
             initExpressions.Add(new BaseClassConstructorSyntax(syntaxNode));
 
             return initExpressions;
